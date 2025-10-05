@@ -1,0 +1,594 @@
+[
+  {
+    "patch_text": "@@ -0,0 +1,262 @@\n+package mockdiff%0A%0A// // Copyright 2009 The Go Authors. All rights reserved.%0A// // Use of this source code is governed by a BSD-style%0A// // license that can be found in the LICENSE file.%0A%0A// // Package ast declares the types used to represent syntax trees for Go%0A\n",
+    "timestamp": 1753548863963
+  },
+  {
+    "patch_text": "@@ -1,262 +1,243 @@\n+// // \n package\n- mockdiff%0A%0A// // Copyright 2009 The Go Authors. All rights reserved.%0A// // Use of this source code is governed by a BSD-style%0A// // license that can be found in the LICENSE file.%0A%0A// // Package ast declares the types used to represent syntax trees for Go\n+s.%0A// //%0A// // Syntax trees may be constructed directly, but they are typically%0A// // produced from Go source code by the parser; see the ParseFile%0A// // function in package %5Bgo/parser%5D.%0A// package ast%0A%0A// import (%0A// %09%22go/token%22\n %0A\n",
+    "timestamp": 1753889063963
+  },
+  {
+    "patch_text": "@@ -1,243 +1,264 @@\n // \n-// packages.%0A// //%0A// // Syntax trees may be constructed directly, but they are typically%0A// // produced from Go source code by the parser; see the ParseFile%0A// // function in package %5Bgo/parser%5D.%0A// package ast%0A%0A// import (%0A// %09%22go/token%22\n+%09%22strings%22%0A// )%0A%0A// // ----------------------------------------------------------------------------%0A// // Interfaces%0A// //%0A// // There are 3 main classes of nodes: Expressions and type nodes,%0A// // statement nodes, and declaration nodes. The node names usually\n %0A\n",
+    "timestamp": 1754236463963
+  },
+  {
+    "patch_text": "@@ -1,264 +1,533 @@\n // \n-%09%22strings%22%0A// )%0A%0A// // ----------------------------------------------------------------------------%0A// // Interfaces%0A// //%0A// // There are 3 main classes of nodes: Expressions and type nodes,%0A// // statement nodes, and declaration nodes. The node names usually\n+// match the corresponding Go spec production names to which they%0A// // correspond. The node fields correspond to the individual parts%0A// // of the respective productions.%0A// //%0A// // All nodes contain position information marking the beginning of%0A// // the corresponding source text segment; it is accessible via the%0A// // Pos accessor method. Nodes may contain additional position info%0A// // for language constructs where comments may be found between parts%0A// // of the construct (typically any larger, parenthesized subpart).\n %0A\n",
+    "timestamp": 1754751863963
+  },
+  {
+    "patch_text": "@@ -3,531 +3,255 @@\n  // \n-match the corresponding Go spec production names to which they%0A// // correspond. The node fields correspond to the individual parts%0A// // of the respective productions.%0A// //%0A// // All nodes contain position information marking the beginning of%0A// // the corresponding source text segment; it is accessible via the%0A// // Pos accessor method. Nodes may contain additional position info%0A// // for language constructs where comments may be found between parts%0A// // of the construct (typically any larger, parenthesized subpart).\n+That position information is needed to properly position comments%0A// // when printing the construct.%0A%0A// // All node types implement the Node interface.%0A// type Node interface %7B%0A// %09Pos() token.Pos // position of first character belonging to the node\n %0A\n",
+    "timestamp": 1755256463963
+  },
+  {
+    "patch_text": "@@ -1,130 +1,112 @@\n // \n-// That position information is needed to properly position comments%0A// // when printing the construct.%0A%0A// // All node typ\n+%09End() token.Pos // position of first character immediately after the node%0A// %7D%0A%0A// // All expression nod\n es i\n@@ -118,20 +118,20 @@\n ent the \n-Node\n+Expr\n  interfa\n@@ -146,12 +146,12 @@\n ype \n-Node\n+Expr\n  int\n@@ -167,73 +167,86 @@\n // %09\n-Pos() token.Pos // position of first character belonging to the node\n+Node%0A// %09exprNode()%0A// %7D%0A%0A// // All statement nodes implement the Stmt interface.\n %0A\n",
+    "timestamp": 1755603863963
+  },
+  {
+    "patch_text": "@@ -1,81 +1,52 @@\n // \n-%09End() token.Pos // position of first character immediately after the n\n+type Stmt interface %7B%0A// %09Node%0A// %09stmtN\n ode\n+()\n %0A// \n@@ -62,15 +62,16 @@\n All \n-express\n+declarat\n ion \n@@ -90,20 +90,20 @@\n ent the \n-Expr\n+Decl\n  interfa\n@@ -118,99 +118,12 @@\n ype \n-Expr interface %7B%0A// %09Node%0A// %09exprNode()%0A// %7D%0A%0A// // All statement nodes implement the Stmt\n+Decl\n  int\n@@ -112,26 +112,27 @@\n .%0A// type Decl interface\n-.\n+ %7B\n %0A\n",
+    "timestamp": 1755894863963
+  },
+  {
+    "patch_text": "@@ -1,29 +1,4 @@\n-// type Stmt interface %7B%0A\n // %09\n@@ -10,12 +10,12 @@\n // %09\n-stmt\n+decl\n Node\n@@ -33,81 +33,168 @@\n  // \n-All declaration nodes implement the Decl interface.%0A// type Decl interface %7B\n+----------------------------------------------------------------------------%0A// // Comments%0A%0A// // A Comment node represents a single //-style or /*-style comment.\n %0A\n",
+    "timestamp": 1756127063963
+  },
+  {
+    "patch_text": "@@ -1,188 +1,477 @@\n // \n-%09Node%0A// %09declNode()%0A// %7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Comments%0A%0A// // A Comment node represents a single //-style \n+//%0A// // The Text field contains the comment text without carriage returns (%5Cr) that%0A// // may have been present in the source. Because a comment's end position is%0A// // computed using len(Text), the position reported by %5BComment.End%5D does not match the%0A// // true source end position for comments containing carriage returns.%0A// type Comment struct %7B%0A// %09Slash token.Pos // position of %22/%22 starting the comment%0A// %09Text  string    // comment text (excluding '%5Cn' f\n or /\n-*\n+/\n -sty\n@@ -480,10 +480,11 @@\n  comment\n-.\n+s)\n %0A\n",
+    "timestamp": 1756597463963
+  },
+  {
+    "patch_text": "@@ -1,490 +1,289 @@\n // \n-//%0A// // The Text field contains the comment text without carriage returns (%5Cr) that%0A// // may have been present in the source. Because a comment's end position is%0A// // computed using\n+%7D%0A%0A// func (c *Comment) Pos() token.Pos %7B return c.Slash %7D%0A// func (c *Comment) End() token.Pos %7B return token.Pos(int(c.Slash) +\n  len(\n+c.\n Text)\n-, the position reported by %5BComment.End%5D does not match the%0A// // true source end position for comments containing carriage returns.%0A// type Comment struct %7B%0A// %09Slash token.Pos // position of %22/%22 starting the comment\n+) %7D%0A%0A// // A CommentGroup represents a sequence of comments%0A// // with no other tokens and no empty lines between.\n %0A// \n-%09Text  string    // comment text (excluding '%5Cn' for //-style comments)\n+type CommentGroup struct %7B\n %0A\n",
+    "timestamp": 1757115263963
+  },
+  {
+    "patch_text": "@@ -1,8 +1,45 @@\n+// %09List %5B%5D*Comment // len(List) %3E 0%0A\n // %7D%0A%0A//\n@@ -37,33 +37,33 @@\n %0A// %7D%0A%0A// func (\n-c\n+g\n  *Comment) Pos()\n@@ -55,16 +55,21 @@\n *Comment\n+Group\n ) Pos() \n@@ -87,23 +87,31 @@\n  return \n-c.Slash\n+g.List%5B0%5D.Pos()\n  %7D%0A// fu\n@@ -114,17 +114,17 @@\n / func (\n-c\n+g\n  *Commen\n@@ -124,16 +124,21 @@\n *Comment\n+Group\n ) End() \n@@ -160,185 +160,185 @@\n urn \n-token.Pos(int(c.Slash) + len(c.Text)) %7D%0A%0A// // A CommentGroup represents a sequence of comments%0A// // with no other tokens and no empty lines between.%0A// type CommentGroup\n+g.List%5Blen(g.List)-1%5D.End() %7D%0A%0A// func isWhitespace(ch byte) bool %7B return ch == ' ' %7C%7C ch == '%5Ct' %7C%7C ch == '%5Cn' %7C%7C ch == '%5Cr' %7D%0A%0A// func stripTrailingWhitespace(s string)\n  str\n-uct\n+ing\n  %7B%0A\n",
+    "timestamp": 1757605463963
+  },
+  {
+    "patch_text": "@@ -1,344 +1,89 @@\n // %09\n-List %5B%5D*Comment // len(List) %3E 0%0A// %7D%0A%0A// func (g *CommentGroup) Pos() token.Pos %7B return g.List%5B0%5D.Pos() %7D%0A// func (g *CommentGroup) End() token.Pos %7B return g.List%5Blen(g.List)-1%5D.End() %7D%0A%0A// func isWhitespace(ch byte) bool %7B return ch == ' ' %7C%7C ch == '%5Ct' %7C%7C ch == '%5Cn' %7C%7C ch == '%5Cr' %7D%0A%0A// func stripTrailingWhitespace(s string) string %7B\n+i := len(s)%0A// %09for i %3E 0 \u0026\u0026 isWhitespace(s%5Bi-1%5D) %7B%0A// %09%09i--%0A// %09%7D%0A// %09return s%5B0:i%5D\n %0A\n",
+    "timestamp": 1757938463963
+  },
+  {
+    "patch_text": "@@ -1,89 +1,345 @@\n // \n-%09i := len(s)%0A// %09for i %3E 0 \u0026\u0026 isWhitespace(s%5Bi-1%5D) %7B%0A// %09%09i--%0A// %09%7D%0A// %09return s%5B0:i%5D\n+%7D%0A%0A// // Text returns the text of the comment.%0A// // Comment markers (//, /*, and */), the first space of a line comment, and%0A// // leading and trailing empty lines are removed.%0A// // Comment directives like %22//line%22 and %22//go:noinline%22 are also removed.%0A// // Multiple empty lines are reduced to one, and trailing space on lines is trimmed.\n %0A\n",
+    "timestamp": 1758247463963
+  },
+  {
+    "patch_text": "@@ -1,345 +1,141 @@\n // \n-%7D%0A%0A// // Text returns the text of the comment.%0A// // Comment markers (//, /*, and */), the first space of a line comment, and%0A// // leading and trailing empty lines are removed.%0A// // Comment directives like %22//line%22 and %22//go:noinline%22 are also removed.%0A// // Multiple empty lines are reduced to one, and trailing space on lines is trimmed.\n+// Unless the result is empty, it is newline-terminated.%0A// func (g *CommentGroup) Text() string %7B%0A// %09if g == nil %7B%0A// %09%09return %22%22%0A// %09%7D\n %0A\n",
+    "timestamp": 1758583463963
+  },
+  {
+    "patch_text": "@@ -1,141 +1,108 @@\n // \n-// Unless the result is empty, it is newline-terminated.%0A// func (g *CommentGroup) Text() string %7B%0A// %09if g == nil %7B%0A// %09%09return %22%22\n+%09comments := make(%5B%5Dstring, len(g.List))%0A// %09for i, c := range g.List %7B%0A// %09%09comments%5Bi%5D = c.Text\n %0A// %09%7D%0A\n+%0A\n",
+    "timestamp": 1758776063963
+  },
+  {
+    "patch_text": "@@ -1,19 +1,16 @@\n // %09\n-comment\n+line\n s := mak\n@@ -25,20 +25,54 @@\n ng, \n-len(g.List))\n+0, 10) // most comments are less than 10 lines\n %0A// \n@@ -76,17 +76,17 @@\n // %09for \n-i\n+_\n , c := r\n@@ -94,46 +94,139 @@\n nge \n-g.List %7B%0A// %09%09comments%5Bi%5D = c.T\n+comments %7B%0A// %09%09// Remove comment markers.%0A// %09%09// The parser has given us exactly the comment t\n ext\n+.\n %0A// %09\n-%7D%0A\n+%09switch c%5B1%5D %7B%0A// %09%09case '/':\n %0A\n",
+    "timestamp": 1759049663963
+  },
+  {
+    "patch_text": "@@ -1,117 +1,95 @@\n // %09\n-lines := make(%5B%5Dstring, 0, 10) // most comments are less than 10 lines%0A// %09for _, c := range comments\n+%09%09//-style comment (no newline at the end)%0A// %09%09%09c = c%5B2:%5D%0A// %09%09%09if len(c) == 0\n  %7B%0A// %09%09\n // R\n@@ -88,123 +88,121 @@\n / %09%09\n+%09%09\n // \n-R\n em\n-ove comment markers.%0A// %09%09// The parser has given us exactly the comment text.%0A// %09%09switch c%5B1%5D %7B%0A// %09%09case '/':\n+pty line%0A// %09%09%09%09break%0A// %09%09%09%7D%0A// %09%09%09if c%5B0%5D == ' ' %7B%0A// %09%09%09%09// strip first space - required for Example tests\n %0A\n",
+    "timestamp": 1759419863963
+  },
+  {
+    "patch_text": "@@ -3,62 +3,16 @@\n  %09%09%09\n-//-style comment (no newline at the end)%0A// %09%09\n %09c = c%5B\n-2\n+1\n :%5D%0A/\n@@ -20,143 +20,96 @@\n  %09%09%09\n-if len(c) == 0 %7B%0A// %09%09%09%09// empty line%0A// %09%09%09%09break%0A// %09%09%09%7D%0A// %09%09%09if c%5B0%5D == ' ' %7B%0A// %09%09%09%09// strip first space - required for Example tests\n+%09break%0A// %09%09%09%7D%0A// %09%09%09if isDirective(c) %7B%0A// %09%09%09%09// Ignore //go:noinline, //line, and so on.\n %0A\n",
+    "timestamp": 1759703063963
+  },
+  {
+    "patch_text": "@@ -5,111 +5,156 @@\n %09%09%09c\n- = c%5B1:%5D%0A// %09%09%09%09break%0A// %09%09%09%7D%0A// %09%09%09if isDirective(c) %7B%0A// %09%09%09%09// Ignore //go:noinline, //line, and so on.\n+ontinue%0A// %09%09%09%7D%0A// %09%09case '*':%0A// %09%09%09/*-style comment */%0A// %09%09%09c = c%5B2 : len(c)-2%5D%0A// %09%09%7D%0A%0A// %09%09// Split on newlines.%0A// %09%09cl := strings.Split(c, %22%5Cn%22)\n %0A\n",
+    "timestamp": 1759946663963
+  },
+  {
+    "patch_text": "@@ -1,102 +1,167 @@\n+%0A\n // %09%09\n-%09%09continue%0A// %09%09%09%7D%0A// %09%09case '*':%0A// %09%09%09/*-style comment */%0A// %09%09%09c = c%5B2 : len(c)-2%5D\n+// Walk lines, stripping trailing white space and adding to list.%0A// %09%09for _, l := range cl %7B%0A// %09%09%09lines = append(lines, stripTrailingWhitespace(l))\n %0A// %09%09%7D%0A\n %0A// \n@@ -160,66 +160,125 @@\n %09%09%7D%0A\n+// %09%7D%0A\n %0A// %09\n-%09\n // \n-Split on newlines.%0A// %09%09cl := strings.Split(c, %22%5Cn%22)\n+Remove leading blank lines; convert runs of%0A// %09// interior blank lines to a single blank line.%0A// %09n := 0\n %0A\n",
+    "timestamp": 1760316863963
+  },
+  {
+    "patch_text": "@@ -1,89 +1,16 @@\n-%0A\n // %09\n-%09// Walk lines, stripping trailing white space and adding to list.%0A// %09%09\n for _, l\n  := \n@@ -5,16 +5,19 @@\n for _, l\n+ine\n  := rang\n@@ -22,18 +22,21 @@\n nge \n-c\n l\n+ines\n  %7B%0A// %09%09\n %09lin\n@@ -35,183 +35,88 @@\n / %09%09\n-%09lines = append(lines, stripTrailingWhitespace(l))%0A// %09%09%7D%0A// %09%7D%0A%0A// %09// Remove leading blank lines; convert runs of%0A// %09// interior blank lines to a single blank\n+if line != %22%22 %7C%7C n %3E 0 \u0026\u0026 lines%5Bn-1%5D != %22%22 %7B%0A// %09%09%09lines%5Bn%5D =\n  line\n-.\n %0A// %09\n-n := 0\n+%09%09n++%0A// %09%09%7D\n %0A\n",
+    "timestamp": 1760683463963
+  },
+  {
+    "patch_text": "@@ -1,58 +1,101 @@\n // %09\n-for _, line := range lines %7B%0A// %09%09if line != %22%22 %7C%7C\n+%7D%0A// %09lines = lines%5B0:n%5D%0A%0A// %09// Add final %22%22 entry to get trailing newline from Join.%0A// %09if\n  n %3E\n@@ -128,38 +128,74 @@\n / %09%09\n-%09\n lines\n-%5Bn%5D = line%0A// %09%09%09n++%0A// %09%09%7D\n+ = append(lines, %22%22)%0A// %09%7D%0A%0A// %09return strings.Join(lines, %22%5Cn%22)\n %0A\n",
+    "timestamp": 1760928263963
+  },
+  {
+    "patch_text": "@@ -1,201 +1,244 @@\n // \n-%09\n %7D%0A\n-// %09lines = lines%5B0:n%5D%0A\n+%0A// // isDirective reports whether c is a comment directive.\n %0A// \n-%09\n // \n-Add final %22%22 entry to get trailing newline from Join.%0A// %09if n %3E 0 \u0026\u0026 lines%5Bn-1%5D != %22%22 %7B%0A// %09%09lines = append(lines, %22%22)%0A// %09%7D%0A%0A// %09return strings.Join(lines, %22%5Cn%22)\n+This code is also in go/printer.%0A// func isDirective(c string) bool %7B%0A// %09// %22//line %22 is a line directive.%0A// %09// %22//extern %22 is for gccgo.%0A// %09// %22//export %22 is for cgo.\n %0A\n",
+    "timestamp": 1761271463963
+  },
+  {
+    "patch_text": "@@ -1,244 +1,266 @@\n // \n-%7D%0A%0A// // isDirective reports whether c is a comment directive.%0A// // This code is also in go/printer.%0A// func isDirective(c string) bool %7B%0A// %09// %22//line %22 is a line directive.%0A// %09// %22//extern %22 is for gccgo.%0A// %09// %22//export %22 is for cgo.\n+%09// (The // has been removed.)%0A// %09if strings.HasPrefix(c, %22line %22) %7C%7C strings.HasPrefix(c, %22extern %22) %7C%7C strings.HasPrefix(c, %22export %22) %7B%0A// %09%09return true%0A// %09%7D%0A%0A// %09// %22//%5Ba-z0-9%5D+:%5Ba-z0-9%5D%22%0A// %09// (The // has been removed.)%0A// %09colon := strings.Index(c, %22:%22)\n %0A\n",
+    "timestamp": 1761656663963
+  },
+  {
+    "patch_text": "@@ -1,143 +1,41 @@\n // %09\n-// (The // has been removed.)%0A// %09if strings.HasPrefix(c, %22line %22) %7C%7C strings.HasPrefix(c, %22extern %22) %7C%7C strings.HasPrefix(c, %22export %22\n+if colon %3C= 0 %7C%7C colon+1 %3E= len(c\n ) %7B%0A\n@@ -50,19 +50,20 @@\n urn \n-tru\n+fals\n e%0A// %09%7D%0A\n %0A// \n@@ -62,104 +62,98 @@\n  %09%7D%0A\n-%0A\n // %09\n-// %22//%5Ba-z0-9%5D+:%5Ba-z0-9%5D%22%0A// %09// (The // has been removed.)%0A// %09colon := strings.Index(c, %22:%22)\n+for i := 0; i %3C= colon+1; i++ %7B%0A// %09%09if i == colon %7B%0A// %09%09%09continue%0A// %09%09%7D%0A// %09%09b := c%5Bi%5D\n %0A\n",
+    "timestamp": 1762019063963
+  },
+  {
+    "patch_text": "@@ -1,41 +1,58 @@\n // %09\n+%09\n if \n-colon %3C= 0 %7C%7C colon+1 %3E= len(c\n+!('a' %3C= b \u0026\u0026 b %3C= 'z' %7C%7C '0' %3C= b \u0026\u0026 b %3C= '9'\n ) %7B%0A\n@@ -56,16 +56,17 @@\n  %7B%0A// %09%09\n+%09\n return f\n@@ -78,100 +78,147 @@\n // %09\n+%09\n %7D%0A// %09\n-for i := 0; i %3C= colon+1; i++ %7B%0A// %09%09if i == colon %7B%0A// %09%09%09contin\n+%7D%0A// %09return tr\n ue%0A// \n-%09%09\n %7D%0A\n+%0A\n // \n-%09%09b := c%5Bi%5D\n+// ----------------------------------------------------------------------------%0A// // Expressions and types%0A\n %0A\n",
+    "timestamp": 1762339463963
+  },
+  {
+    "patch_text": "@@ -1,224 +1,346 @@\n // \n-%09%09if !('a' %3C= b \u0026\u0026 b %3C= 'z' %7C%7C '0' %3C= b \u0026\u0026 b %3C= '9') %7B%0A// %09%09%09return false%0A// %09%09%7D%0A// %09%7D%0A// %09return true%0A// %7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Expressions and types%0A\n+// A Field represents a Field declaration list in a struct type,%0A// // a method list in an interface type, or a parameter/result declaration%0A// // in a signature.%0A// // %5BField.Names%5D is nil for unnamed parameters (parameter lists which only contain types)%0A// // and embedded struct fields. In the latter case, the field name is the type name.\n %0A\n",
+    "timestamp": 1762737863963
+  },
+  {
+    "patch_text": "@@ -1,346 +1,390 @@\n // \n-// A\n+type\n  Field \n-represents a Field declaration list in a struct type,%0A// // a method list in an interface type, or a parameter/result declaration%0A// // in a signature.%0A//\n+struct %7B%0A// %09Doc     *CommentGroup // associated documentation; or nil%0A// %09Names   %5B%5D*Ident      // field/method/(type) parameter names; or nil%0A// %09Type    Expr          // field/method/parameter type; or nil%0A// %09Tag     *BasicLit    \n  // \n-%5BF\n+f\n ield\n-.Names%5D is nil for unnamed parameters (parameter lists which only contain types)%0A// // and embedded struct fields. In the latter case, the field name is the type name.\n+ tag; or nil%0A// %09Comment *CommentGroup // line comments; or nil%0A// %7D%0A%0A// func (f *Field) Pos() token.Pos %7B%0A// %09if len(f.Names) %3E 0 %7B\n %0A\n",
+    "timestamp": 1763230463963
+  },
+  {
+    "patch_text": "@@ -1,390 +1,117 @@\n // \n-type Field struct %7B%0A// %09Doc     *CommentGroup // associated documentation; or nil%0A// %09Names   %5B%5D*Ident      // field/method/(type) parameter names; or nil%0A// %09Type    Expr          // field/method/parameter type; or\n+%09%09return f.Names%5B0%5D.Pos()%0A// %09%7D%0A// %09if f.Type !=\n  nil\n+ %7B\n %0A// %09\n-Tag     *BasicLit     // field tag; or nil%0A// %09Comment *CommentGroup // line comments; or nil\n+%09return f.Type.Pos()\n %0A// \n+%09\n %7D\n-%0A\n %0A// \n-func (f *Field) Pos()\n+%09return\n  token.\n+No\n Pos\n- %7B\n %0A// \n-%09if len(f.Names) %3E 0 %7B\n+%7D\n %0A\n",
+    "timestamp": 1763597063963
+  },
+  {
+    "patch_text": "@@ -1,20 +1,80 @@\n+%0A// func (f *Field) End() token.Pos %7B%0A// %09if f.Tag != nil %7B%0A\n // %09%09return f.Names%5B\n@@ -71,20 +71,15 @@\n n f.\n-Names%5B0%5D.Pos\n+Tag.End\n ()%0A/\n@@ -125,19 +125,19 @@\n  f.Type.\n-Pos\n+End\n ()%0A// %09%7D\n@@ -145,28 +145,26 @@\n // %09\n-return token.NoPos%0A// %7D\n+if len(f.Names) %3E 0 %7B\n %0A\n",
+    "timestamp": 1763795063963
+  },
+  {
+    "patch_text": "@@ -1,170 +1,77 @@\n-%0A\n // \n-func (f *Field) End() token.Pos %7B%0A// %09if f.Tag != nil %7B%0A// %09%09return f.Tag.End()%0A// %09%7D%0A// %09if f.Type != nil %7B%0A// %09%09return f.Type.End()\n+%09%09return f.Names%5Blen(f.Names)-1%5D.End()%0A// %09%7D%0A// %09return token.NoPos\n %0A// \n-%09\n %7D%0A\n-// %09if len(f.Names) %3E 0 %7B\n %0A\n",
+    "timestamp": 1764000263963
+  },
+  {
+    "patch_text": "@@ -1,77 +1,417 @@\n // \n-%09%09return f.Names%5Blen(f.Names)-1%5D.End()%0A// %09%7D%0A// %09return token.NoPos%0A// %7D%0A\n+// A FieldList represents a list of Fields, enclosed by parentheses,%0A// // curly braces, or square brackets.%0A// type FieldList struct %7B%0A// %09Opening token.Pos // position of opening parenthesis/brace/bracket, if any%0A// %09List    %5B%5D*Field  // field list; or nil%0A// %09Closing token.Pos // position of closing parenthesis/brace/bracket, if any%0A// %7D%0A%0A// func (f *FieldList) Pos() token.Pos %7B%0A// %09if f.Opening.IsValid() %7B\n %0A\n",
+    "timestamp": 1764348863963
+  },
+  {
+    "patch_text": "@@ -1,417 +1,215 @@\n // \n-// A FieldList represents a list of Fields, enclosed by parentheses,%0A// // curly braces, or square brackets.%0A// type FieldList struct %7B%0A// %09Opening token.Pos // position of opening parenthesis/brace/bracket, if any%0A// %09List    %5B%5D*Field  // field list; or nil%0A// %09Closing token.Pos // position of closing parenthesis/brace/bracket, if any%0A// %7D%0A%0A// func (f *FieldList) Pos()\n+%09%09return f.Opening%0A// %09%7D%0A// %09// the list should not be empty in this case;%0A// %09// be conservative and guard against bad ASTs%0A// %09if len(f.List) %3E 0 %7B%0A// %09%09return f.List%5B0%5D.Pos()%0A// %09%7D%0A// %09return\n  token.\n+No\n Pos\n- %7B\n %0A// \n-%09if f.Opening.IsValid() %7B\n+%7D\n %0A\n",
+    "timestamp": 1764795263963
+  },
+  {
+    "patch_text": "@@ -1,215 +1,103 @@\n+%0A\n // \n-%09%09return f.Opening%0A// %09%7D%0A// %09// the list should not be empty in this case;%0A// %09// be conservative and guard against bad ASTs%0A// %09if len(f.List) %3E 0 %7B%0A// %09%09return f.List%5B0%5D.Pos()%0A// %09%7D%0A// %09return token.NoPos%0A// \n+func (f *FieldList) End() token.Pos %7B%0A// %09if f.Closing.IsValid() %7B%0A// %09%09return f.Closing + 1%0A// %09\n %7D%0A\n",
+    "timestamp": 1765044263963
+  },
+  {
+    "patch_text": "@@ -1,103 +1,192 @@\n-%0A\n // \n-func (f *FieldList) End() token.Pos %7B%0A// %09if f.Closing.IsValid() %7B%0A// %09%09return f.Closing + 1%0A// %09%7D\n+%09// the list should not be empty in this case;%0A// %09// be conservative and guard against bad ASTs%0A// %09if n := len(f.List); n %3E 0 %7B%0A// %09%09return f.List%5Bn-1%5D.End()%0A// %09%7D%0A// %09return token.NoPos\n %0A\n",
+    "timestamp": 1765271663963
+  },
+  {
+    "patch_text": "@@ -1,192 +1,172 @@\n // \n-%09// the list should not be empty in this case;%0A// %09// be conservative and guard against bad ASTs%0A// %09if n := len(f.List); n %3E 0 %7B%0A// %09%09return f.List%5Bn-1%5D.End()%0A// %09%7D%0A// %09return token.NoPos\n+%7D%0A%0A// // NumFields returns the number of parameters or struct fields represented by a %5BFieldList%5D.%0A// func (f *FieldList) NumFields() int %7B%0A// %09n := 0%0A// %09if f != nil %7B\n %0A\n",
+    "timestamp": 1765540463963
+  },
+  {
+    "patch_text": "@@ -1,172 +1,95 @@\n // \n-%7D%0A%0A// // NumFields returns the number of parameters or struct fields represented by a %5BFieldList%5D.%0A// func (f *FieldList) NumFields() int %7B%0A// %09n :\n+%09%09for _, g := range f.List %7B%0A// %09%09%09m := len(g.Names)%0A// %09%09%09if m =\n = 0\n+ %7B\n %0A// %09\n-if f != nil %7B\n+%09%09%09m = 1%0A// %09%09%09%7D\n %0A\n",
+    "timestamp": 1765755263963
+  },
+  {
+    "patch_text": "@@ -2,94 +2,43 @@\n / %09%09\n-for _, g := range f.List %7B%0A// %09%09%09m := len(g.Names)%0A// %09%09%09if m == 0 %7B%0A// %09%09%09%09m = 1\n+%09n += m%0A// %09%09%7D%0A// %09%7D%0A// %09return n\n %0A// \n-%09%09%09\n %7D%0A\n",
+    "timestamp": 1765889063963
+  },
+  {
+    "patch_text": "@@ -1,44 +1,267 @@\n+%0A\n // \n-%09%09%09n += m%0A// %09%09%7D%0A// %09%7D%0A// %09return n%0A// %7D\n+// An expression is represented by a tree consisting of one%0A// // or more of the following concrete expression nodes.%0A// type (%0A// %09// A BadExpr node is a placeholder for an expression containing%0A// %09// syntax errors for which a correct expression node cannot be\n %0A\n",
+    "timestamp": 1766117063963
+  },
+  {
+    "patch_text": "@@ -1,267 +1,177 @@\n-%0A\n // \n+%09\n // \n-An expression is represented by a tree consisting of one%0A// // or more of the following concrete expression nodes.%0A// type (%0A// %09// A BadExpr node is a placeholder for an expression containing%0A// %09// syntax errors for which a correct expression node cannot be\n+created.%0A// %09//%0A// %09BadExpr struct %7B%0A// %09%09From, To token.Pos // position range of bad expression%0A// %09%7D%0A%0A// %09// An Ident node represents an identifier.%0A// %09Ident struct %7B\n %0A\n",
+    "timestamp": 1766430863963
+  },
+  {
+    "patch_text": "@@ -1,171 +1,307 @@\n // %09\n-// created.%0A// %09//%0A// %09BadExpr struct %7B%0A// %09%09From, To token.Pos // position range of bad expression%0A// %09%7D%0A%0A// %09// An Ident node represents an identifier.%0A// %09Ident\n+%09NamePos token.Pos // identifier position%0A// %09%09Name    string    // identifier name%0A// %09%09Obj     *Object   // denoted object, or nil. Deprecated: see Object.%0A// %09%7D%0A%0A// %09// An Ellipsis node stands for the %22...%22 type in a%0A// %09// parameter list or the %22...%22 length in an array type.%0A// %09//%0A// %09Ellipsis\n  str\n",
+    "timestamp": 1766777663963
+  },
+  {
+    "patch_text": "@@ -2,14 +2,15 @@\n / %09%09\n-NamePo\n+Ellipsi\n s to\n@@ -24,158 +24,186 @@\n  // \n-identifier position%0A// %09%09Name    string    // identifier name%0A// %09%09Obj     *Object   // denoted object, or nil. Deprecated: see Object\n+position of %22...%22%0A// %09%09Elt      Expr      // ellipsis element type (parameter lists only); or nil%0A// %09%7D%0A%0A// %09// A BasicLit node represents a literal of basic type\n .%0A// %09\n-%7D%0A\n+//\n %0A// %09// \n An E\n@@ -202,141 +202,269 @@\n %09// \n-An Ellipsis node stands for the %22...%22 type in a%0A// %09// parameter list or the %22...%22 length in an array type.%0A// %09//%0A// %09Ellipsis struct %7B\n+Note that for the CHAR and STRING kinds, the literal is stored%0A// %09// with its quotes. For example, for a double-quoted STRING, the%0A// %09// first and the last rune in the Value field will be %22. The%0A// %09// %5Bstrconv.Unquote%5D and %5Bstrconv.UnquoteChar%5D functions can be\n %0A\n",
+    "timestamp": 1767342863963
+  },
+  {
+    "patch_text": "@@ -1,470 +1,543 @@\n // %09\n-%09Ellipsis token.Pos // position of %22...%22%0A// %09%09Elt      Expr      // ellipsis element type (parameter lists only); or nil%0A// %09%7D%0A%0A// %09// A BasicLit node represents a literal of basic type.%0A// %09//%0A// %09// Note that for the CHAR and STRING kinds, the literal is st\n+// used to unquote STRING and CHAR values, respectively.%0A// %09//%0A// %09// For raw string literals (Kind == token.STRING \u0026\u0026 Value%5B0%5D == '%60'),%0A// %09// the Value field contains the string text without carriage returns (%5Cr) that%0A// %09// may have been present in the source. Because the end position is%0A// %09// computed using len(Value), the position rep\n or\n+t\n ed\n-%0A// %09// with its quotes. For example, for a double-quoted STRING, the%0A// %09// first and the last rune in the Value field will be %22. The%0A// %09// %5Bstrconv.Unquote%5D and %5Bstrconv.UnquoteChar%5D functions can be\n+ by %5BBasicLit.End%5D does not match the%0A// %09// true source end position for raw string literals containing carriage returns.%0A// %09BasicLit struct %7B%0A// %09%09ValuePos token.Pos   // literal position\n %0A\n",
+    "timestamp": 1768031663963
+  },
+  {
+    "patch_text": "@@ -1,543 +1,262 @@\n // %09\n-// used to unquote STRING and CHAR values, respectively.%0A// %09//%0A// %09// For raw string literals (Kind == token.STRING \u0026\u0026 Value%5B0%5D == '%60'),%0A// %09// the Value field contains the string text without carriage returns (%5Cr) that%0A// %09// may have been present in the source. Because the end position is%0A// %09// computed using len(Value), the position reported by %5BBasicLit.End%5D does not match the%0A// %09// true source end position for raw string literals containing carriage returns.%0A// %09BasicLit struct %7B%0A// %09%09ValuePos token.Pos   // literal position\n+%09Kind     token.Token // token.INT, token.FLOAT, token.IMAG, token.CHAR, or token.STRING%0A// %09%09Value    string      // literal string; e.g. 42, 0x7f, 3.14, 1e-9, 2.4i, 'a', '%5Cx7f', %22foo%22 or %60%5Cm%5Cn%5Co%60%0A// %09%7D%0A%0A// %09// A FuncLit node represents a function literal.\n %0A\n",
+    "timestamp": 1768581263963
+  },
+  {
+    "patch_text": "@@ -1,205 +1,100 @@\n // %09\n-%09Kind     token.Token // token.INT, token.FLOAT, token.IMAG, token.CHAR, or token.STRING%0A// %09%09Value    string      // literal string; e.g. 42, 0x7f, 3.14, 1e-9, 2.4i, 'a', '%5Cx7f', %22foo%22 or %60%5Cm%5Cn%5Co%60\n+FuncLit struct %7B%0A// %09%09Type *FuncType  // function type%0A// %09%09Body *BlockStmt // function body\n %0A// \n@@ -106,20 +106,25 @@\n / %09// A \n-Func\n+Composite\n Lit node\n@@ -137,24 +137,25 @@\n sents a \n-function\n+composite\n  literal\n",
+    "timestamp": 1768875863963
+  },
+  {
+    "patch_text": "@@ -1,16 +1,21 @@\n // %09\n-Func\n+Composite\n Lit stru\n@@ -33,136 +33,292 @@\n ype \n-*FuncType  // function type%0A// %09%09Body *BlockStmt // function body%0A// %09%7D%0A%0A// %09// A CompositeLit node represents a composite literal.\n+      Expr      // literal type; or nil%0A// %09%09Lbrace     token.Pos // position of %22%7B%22%0A// %09%09Elts       %5B%5DExpr    // list of composite elements; or nil%0A// %09%09Rbrace     token.Pos // position of %22%7D%22%0A// %09%09Incomplete bool      // true if (source) expressions are missing in the Elts list%0A// %09%7D%0A\n %0A\n",
+    "timestamp": 1769220263963
+  },
+  {
+    "patch_text": "@@ -1,95 +1,101 @@\n // %09\n-CompositeLit struct %7B%0A// %09%09Type       Expr      // literal type; or nil%0A// %09%09Lbrace    \n+// A ParenExpr node represents a parenthesized expression.%0A// %09ParenExpr struct %7B%0A// %09%09Lparen\n  tok\n@@ -121,37 +121,31 @@\n of %22\n-%7B\n+(\n %22%0A// %09%09\n-Elts \n+X\n       \n-%5B%5D\n Expr    \n // l\n@@ -144,181 +144,81 @@\n     \n-// list of composite elements; or nil%0A// %09%09Rbrace     token.Pos // position of %22%7D%22%0A// %09%09Incomplete bool      // true if (source) expressions are missing in the Elts list\n+  // parenthesized expression%0A// %09%09Rparen token.Pos // position of %22)%22\n %0A// %09%7D%0A\n-%0A\n",
+    "timestamp": 1769617463963
+  },
+  {
+    "patch_text": "@@ -1,12 +1,13 @@\n+%0A\n // %09// A Par\n@@ -3,21 +3,24 @@\n / %09// A \n-Paren\n+Selector\n Expr nod\n@@ -37,137 +37,89 @@\n ts a\n- parenthesized expression.%0A// %09ParenExpr struct %7B%0A// %09%09Lparen token.Pos // position of %22(%22%0A// %09%09X \n+n expression followed by a selector.%0A// %09SelectorExpr struct %7B%0A// %09%09X\n    \n-  \n Expr   \n-   \n //\n- parenthesized\n  exp\n@@ -135,43 +135,36 @@\n / %09%09\n-Rparen token.Pos // position of %22)%22\n+Sel *Ident // field selector\n %0A// \n",
+    "timestamp": 1769910263963
+  },
+  {
+    "patch_text": "@@ -6,17 +6,15 @@\n // A\n- Selector\n+n Index\n Expr\n@@ -61,31 +61,26 @@\n by a\n- selector.%0A// %09Selector\n+n index.%0A// %09Index\n Expr\n@@ -102,15 +102,21 @@\n X   \n+   \n Expr   \n+ \n+  \n // e\n@@ -134,36 +134,126 @@\n / %09%09\n-Sel *Ident // field selector\n+Lbrack token.Pos // position of %22%5B%22%0A// %09%09Index  Expr      // index expression%0A// %09%09Rbrack token.Pos // position of %22%5D%22\n %0A// \n",
+    "timestamp": 1770153263963
+  },
+  {
+    "patch_text": "@@ -5,24 +5,28 @@\n %09// An Index\n+List\n Expr node re\n@@ -64,16 +64,31 @@\n  by \n-an index\n+multiple%0A// %09// indices\n .%0A//\n@@ -94,16 +94,20 @@\n / %09Index\n+List\n Expr str\n@@ -128,84 +128,8 @@\n     \n-Expr      // expression%0A// %09%09Lbrack token.Pos // position of %22%5B%22%0A// %09%09Index \n  Exp\n@@ -141,14 +141,8 @@\n   //\n- index\n  exp\n@@ -153,51 +153,4 @@\n ion%0A\n-// %09%09Rbrack token.Pos // position of %22%5D%22%0A// %09%7D%0A\n",
+    "timestamp": 1770417863963
+  },
+  {
+    "patch_text": "@@ -1,24 +1,153 @@\n-%0A\n // %09\n-// An IndexList\n+%09Lbrack  token.Pos // position of %22%5B%22%0A// %09%09Indices %5B%5DExpr    // index expressions%0A// %09%09Rbrack  token.Pos // position of %22%5D%22%0A// %09%7D%0A%0A// %09// A Slice\n Expr\n@@ -193,23 +193,13 @@\n  by \n-multiple%0A// %09//\n+slice\n  ind\n@@ -212,17 +212,13 @@\n // %09\n-IndexList\n+Slice\n Expr\n@@ -239,17 +239,16 @@\n %09X      \n- \n Expr    \n@@ -263,8 +263,103 @@\n ression%0A\n+// %09%09Lbrack token.Pos // position of %22%5B%22%0A// %09%09Low    Expr      // begin of slice range; or nil%0A\n",
+    "timestamp": 1770751463963
+  },
+  {
+    "patch_text": "@@ -2,88 +2,179 @@\n / %09%09\n-Lbrack  token.Pos // position of %22%5B%22%0A// %09%09Indices %5B%5DExpr    // index expressions\n+High   Expr      // end of slice range; or nil%0A// %09%09Max    Expr      // maximum capacity of slice; or nil%0A// %09%09Slice3 bool      // true if 3-index slice (2 colons present)\n %0A// \n@@ -182,17 +182,16 @@\n %09Rbrack \n- \n token.Po\n@@ -227,21 +227,26 @@\n / %09// A \n-Slice\n+TypeAssert\n Expr nod\n@@ -288,173 +288,36 @@\n  by \n-slice indices.%0A// %09SliceExpr struct %7B%0A// %09%09X      Expr      // expression%0A// %09%09Lbrack token.Pos // position of %22%5B%22%0A// %09%09Low    Expr      // begin of slice range; or nil\n+a%0A// %09// type assertion.%0A// %09//\n %0A\n",
+    "timestamp": 1771174463963
+  },
+  {
+    "patch_text": "@@ -1,64 +1,40 @@\n // %09\n-%09High   Expr      // end of slice range; or nil\n+TypeAssertExpr struct %7B\n %0A// %09%09\n-Max\n+X  \n     \n@@ -50,114 +50,137 @@\n  // \n-maximum capacity of slice; or nil%0A// %09%09Slice3 bool      // true if 3-index slice (2 colons present\n+expression%0A// %09%09Lparen token.Pos // position of %22(%22%0A// %09%09Type   Expr      // asserted type; nil means type switch X.(type\n )%0A// %09%09R\n brac\n@@ -179,13 +179,13 @@\n  %09%09R\n-brack\n+paren\n  tok\n@@ -211,9 +211,9 @@\n of %22\n-%5D\n+)\n %22%0A//\n@@ -226,26 +226,20 @@\n / %09// A \n-TypeAssert\n+Call\n Expr nod\n@@ -282,35 +282,90 @@\n by a\n-%0A// %09// type assertion.%0A// %09//\n+n argument list.%0A// %09CallExpr struct %7B%0A// %09%09Fun      Expr      // function expression\n %0A\n",
+    "timestamp": 1771631063963
+  },
+  {
+    "patch_text": "@@ -1,52 +1,71 @@\n // %09\n-TypeAssertExpr struct %7B\n+%09Lparen   token.Pos // position of %22(%22\n %0A// %09%09\n-X \n+Args\n      \n+%5B%5D\n Expr    \n   //\n@@ -64,134 +64,116 @@\n     \n-  \n // \n-expression%0A// %09%09Lparen token.Pos // position of %22(%22%0A// %09%09Type   Expr      // asserted type; nil means type switch X.(type\n+function arguments; or nil%0A// %09%09Ellipsis token.Pos // position of %22...%22 (token.NoPos if there is no %22...%22\n )%0A//\n@@ -182,16 +182,18 @@\n %09Rparen \n+  \n token.Po\n@@ -229,20 +229,20 @@\n / %09// A \n-Call\n+Star\n Expr nod\n@@ -272,97 +272,25 @@\n ion \n-followed by an argument list.%0A// %09CallExpr struct %7B%0A// %09%09Fun      Expr      // function e\n+of the form %22*%22 E\n xpre\n@@ -294,9 +294,10 @@\n pression\n+.\n %0A\n",
+    "timestamp": 1772088263963
+  },
+  {
+    "patch_text": "@@ -1,223 +1,177 @@\n // %09\n-%09Lparen   token.Pos // posit\n+// Semantically it could be a unary %22*%22 express\n ion\n+,\n  o\n-f %22(%22%0A// %09%09Args     %5B%5DExpr    // function arguments; or nil%0A// %09%09Ellipsis token.Pos // position of %22...%22 (token.NoPos if there is no %22...%22)%0A// %09%09Rparen   token.Pos // position of %22)%22\n+r a pointer type.%0A// %09//%0A// %09StarExpr struct %7B%0A// %09%09Star token.Pos // position of %22*%22%0A// %09%09X    Expr      // operand\n %0A// \n@@ -183,20 +183,21 @@\n / %09// A \n-St\n+Un\n ar\n+y\n Expr nod\n@@ -210,17 +210,22 @@\n esents a\n-n\n+ unary\n  express\n@@ -231,26 +231,28 @@\n sion\n- of the form\n+.%0A// %09// Unary\n  %22*%22 \n-E\n+e\n xpre\n@@ -248,18 +248,54 @@\n y %22*%22 expression\n+s are represented via StarExpr nodes\n .%0A\n",
+    "timestamp": 1772558663963
+  },
+  {
+    "patch_text": "@@ -3,92 +3,18 @@\n  %09//\n- Semantically it could be a unary %22*%22 expression, or a pointer type.%0A// %09//%0A// %09St\n+%0A// %09Un\n ar\n+y\n Expr\n@@ -28,20 +28,21 @@\n  %7B%0A// %09%09\n-Star\n+OpPos\n  token.P\n@@ -44,16 +44,18 @@\n ken.Pos \n+  \n // posit\n@@ -65,31 +65,33 @@\n  of \n-%22*%22\n+Op\n %0A// %09%09\n-X    Expr     \n+Op    token.Token\n  // \n@@ -99,134 +99,42 @@\n pera\n-nd\n+tor\n %0A// %09\n-%7D%0A%0A// %09// A UnaryExpr node represents a unary expression.%0A// %09// Unary %22*%22 expressions are represented via StarExpr nodes.\n+%09X     Expr        // operand\n %0A\n",
+    "timestamp": 1772901863963
+  },
+  {
+    "patch_text": "@@ -1,16 +1,74 @@\n // %09\n-//\n+%7D%0A%0A// %09// A BinaryExpr node represents a binary expression.\n %0A// %09\n-U\n+Bi\n nary\n@@ -81,16 +81,55 @@\n truct %7B%0A\n+// %09%09X     Expr        // left operand%0A\n // %09%09OpP\n@@ -197,25 +197,25 @@\n erator%0A// %09%09\n-X\n+Y\n      Expr   \n@@ -221,16 +221,22 @@\n       //\n+ right\n  operand\n@@ -228,16 +228,23 @@\n / right operand%0A\n+// %09%7D%0A%0A\n",
+    "timestamp": 1773135263963
+  },
+  {
+    "patch_text": "@@ -1,15 +1,8 @@\n-// %09%7D%0A%0A\n // %09// A\n@@ -2,22 +2,24 @@\n / %09// A \n-Binary\n+KeyValue\n Expr nod\n@@ -35,39 +35,77 @@\n nts \n-a binary expression.%0A// %09Binary\n+(key : value) pairs%0A// %09// in composite literals.%0A// %09//%0A// %09KeyValue\n Expr\n@@ -123,52 +123,29 @@\n / %09%09\n-X  \n+Key\n    Expr\n-        // left operand\n %0A// %09%09\n-OpPos\n+Colon\n  tok\n@@ -151,18 +151,16 @@\n ken.Pos \n-  \n // posit\n@@ -170,89 +170,35 @@\n  of \n-Op\n+%22:%22\n %0A// %09%09\n-Op    token.Token // operator%0A// %09%09Y     Expr        // right operand\n+Value Expr\n %0A// %09%7D%0A\n+// )\n %0A\n",
+    "timestamp": 1773485663963
+  },
+  {
+    "patch_text": "@@ -1,204 +1,198 @@\n+%0A\n // \n-%09\n // \n-A KeyValueExpr node represents (key : value) pairs%0A// %09// in composite literals.%0A// %09//%0A// %09KeyValueExpr struct %7B%0A// %09%09Key   Expr%0A// %09%09Colon token.Pos // position of %22:%22%0A// %09%09Value Expr\n+The direction of a channel type is indicated by a bit%0A// // mask including one or both of the following constants.%0A// type ChanDir int%0A%0A// const (%0A// %09SEND ChanDir = 1 %3C%3C iota\n %0A// %09\n-%7D\n+RECV\n %0A// )%0A\n+%0A\n",
+    "timestamp": 1773782663963
+  },
+  {
+    "patch_text": "@@ -1,37 +1,11 @@\n-%0A\n // // \n-The direction of a channel\n+A\n  typ\n@@ -13,14 +13,16 @@\n  is \n-indica\n+represen\n ted \n@@ -30,145 +30,230 @@\n y a \n-bit%0A// // mask including one or both of the following constants.%0A// type ChanDir int%0A%0A// const (\n+tree consisting of one%0A// // or more of the following type-specific expression%0A// // nodes.%0A// type (%0A// %09// An ArrayType node represents an array or slice type.%0A// %09ArrayType struct %7B\n %0A// %09\n-SEND ChanDir = 1 %3C%3C iota%0A// %09RECV%0A// )%0A\n+%09Lbrack token.Pos // position of %22%5B%22\n %0A\n",
+    "timestamp": 1774124063963
+  },
+  {
+    "patch_text": "@@ -1,138 +1,131 @@\n // \n-// A type is represented by a tree consisting of one%0A// // or more of the following type-specific expression%0A// // nodes.%0A// type (\n+%09%09Len    Expr      // Ellipsis node for %5B...%5DT array types, nil for slice types%0A// %09%09Elt    Expr      // element type%0A// %09%7D%0A\n %0A// \n@@ -133,15 +133,15 @@\n // A\n-n Array\n+ Struct\n Type\n@@ -162,24 +162,15 @@\n ts a\n-n array or slice\n+ struct\n  typ\n@@ -180,13 +180,14 @@\n // %09\n-Array\n+Struct\n Type\n@@ -200,45 +200,4 @@\n t %7B%0A\n-// %09%09Lbrack token.Pos // position of %22%5B%22%0A\n",
+    "timestamp": 1774466063963
+  },
+  {
+    "patch_text": "@@ -2,202 +2,264 @@\n / %09%09\n-Len    Expr      // Ellipsis node for %5B...%5DT array types, nil for slice types%0A// %09%09Elt    Expr      // element type%0A// %09%7D%0A%0A// %09// A StructType node represents a struct type.%0A// %09StructType struct %7B\n+Struct     token.Pos  // position of %22struct%22 keyword%0A// %09%09Fields     *FieldList // list of field declarations%0A// %09%09Incomplete bool       // true if (source) fields are missing in the Fields list%0A// %09%7D%0A%0A// %09// Pointer types are represented via StarExpr nodes.\n %0A\n",
+    "timestamp": 1774796663963
+  },
+  {
+    "patch_text": "@@ -1,15 +1,89 @@\n+%0A\n // %09\n-%09Struct\n+// A FuncType node represents a function type.%0A// %09FuncType struct %7B%0A// %09%09Func  \n     \n@@ -110,22 +110,20 @@\n ion of %22\n-struct\n+func\n %22 keywor\n@@ -127,211 +127,219 @@\n word\n-%0A// %09%09Fields     *FieldList // list of field declarations%0A// %09%09Incomplete bool       // true if (source) fields are missing in the Fields list%0A// %09%7D%0A%0A// %09// Pointer types are represented via StarExpr nodes.\n+ (token.NoPos if there is no %22func%22)%0A// %09%09TypeParams *FieldList // type parameters; or nil%0A// %09%09Params     *FieldList // (incoming) parameters; non-nil%0A// %09%09Results    *FieldList // (outgoing) results; or nil%0A// %09%7D\n %0A\n",
+    "timestamp": 1775224463963
+  },
+  {
+    "patch_text": "@@ -6,13 +6,19 @@\n // A\n- Func\n+n Interface\n Type\n@@ -39,17 +39,19 @@\n ts a\n- function\n+n interface\n  typ\n@@ -57,20 +57,25 @@\n pe.%0A// %09\n-Func\n+Interface\n Type str\n@@ -89,17 +89,17 @@\n / %09%09\n-Func     \n+Interface\n   to\n@@ -127,232 +127,196 @@\n of %22\n-func%22 keyword (token.NoPos if there is no %22func%22)%0A// %09%09TypeParams *FieldList // type parameters; or nil%0A// %09%09Params     *FieldList // (incoming) parameters; non-nil%0A// %09%09Results    *FieldList // (outgoing) results; or nil%0A// %09%7D\n+interface%22 keyword%0A// %09%09Methods    *FieldList // list of embedded interfaces, methods, or types%0A// %09%09Incomplete bool       // true if (source) methods or types are missing in the Methods list\n %0A\n",
+    "timestamp": 1775661263963
+  },
+  {
+    "patch_text": "@@ -1,12 +1,18 @@\n+// %09%7D%0A\n %0A// %09// An I\n@@ -12,19 +12,12 @@\n // A\n-n Interface\n+ Map\n Type\n@@ -38,19 +38,12 @@\n ts a\n-n interface\n+ map\n  typ\n@@ -49,25 +49,19 @@\n pe.%0A// %09\n-Interface\n+Map\n Type str\n@@ -75,17 +75,12 @@\n / %09%09\n-Interface\n+Map \n   to\n@@ -87,17 +87,16 @@\n ken.Pos \n- \n // posit\n@@ -103,25 +103,19 @@\n ion of %22\n-interface\n+map\n %22 keywor\n@@ -125,172 +125,88 @@\n / %09%09\n-Methods    *FieldList // list of embedded interfaces, methods, or types%0A// %09%09Incomplete bool       // true if (source) methods or types are missing in the Methods list\n+Key   Expr%0A// %09%09Value Expr%0A// %09%7D%0A%0A// %09// A ChanType node represents a channel type.\n %0A\n",
+    "timestamp": 1776072863963
+  },
+  {
+    "patch_text": "@@ -1,87 +1,119 @@\n // %09\n-%7D%0A%0A// %09// A MapType node represents a map type.%0A// %09MapType struct %7B\n+ChanType struct %7B%0A// %09%09Begin token.Pos // position of %22chan%22 keyword or %22%3C-%22 (whichever comes first)\n %0A// %09%09\n-Map  \n+Arrow\n  tok\n@@ -139,106 +139,131 @@\n of %22\n-map%22 keyword%0A// %09%09Key   Expr%0A// %09%09Value Expr%0A// %09%7D%0A%0A// %09// A ChanType node represents a channel type.\n+%3C-%22 (token.NoPos if there is no %22%3C-%22)%0A// %09%09Dir   ChanDir   // channel direction%0A// %09%09Value Expr      // value type%0A// %09%7D%0A// )%0A\n %0A\n",
+    "timestamp": 1776427463963
+  },
+  {
+    "patch_text": "@@ -1,269 +1,403 @@\n // \n-%09ChanType struct %7B%0A// %09%09Begin token.Pos // position of %22chan%22 keyword or %22%3C-%22 (whichever comes first)%0A// %09%09Arrow token.Pos // position of %22%3C-%22 (\n+// Pos and End implementations for expression/type nodes.%0A%0A// func (x *BadExpr) Pos() token.Pos  %7B return x.From %7D%0A// func (x *Ident) Pos() token.Pos    %7B return x.NamePos %7D%0A// func (x *Ellipsis) Pos() \n token.\n-No\n Pos \n-if there is no %22%3C-%22)%0A// %09%09Dir   ChanDir   // channel direction%0A// %09%09Value Expr      // value type%0A// %09%7D%0A// )%0A\n+%7B return x.Ellipsis %7D%0A// func (x *BasicLit) Pos() token.Pos %7B return x.ValuePos %7D%0A// func (x *FuncLit) Pos() token.Pos  %7B return x.Type.Pos() %7D%0A// func (x *CompositeLit) Pos() token.Pos %7B\n %0A\n",
+    "timestamp": 1776903863963
+  },
+  {
+    "patch_text": "@@ -1,119 +1,80 @@\n // \n-// Pos and End implementations for expression/type nodes.%0A%0A// func (x *BadExpr) Pos() token.Pos  %7B return x.From\n+%09if x.Type != nil %7B%0A// %09%09return x.Type.Pos()%0A// %09%7D%0A// %09return x.Lbrace%0A//\n  %7D%0A/\n@@ -88,13 +88,17 @@\n (x *\n-Ident\n+ParenExpr\n ) Po\n@@ -114,16 +114,18 @@\n .Pos    \n+  \n %7B return\n@@ -131,15 +131,14 @@\n n x.\n-NamePos\n+Lparen\n  %7D%0A/\n@@ -148,24 +148,28 @@\n unc (x *\n-Ellipsis\n+SelectorExpr\n ) Pos() \n@@ -170,32 +170,34 @@\n Pos() token.Pos \n+  \n %7B return x.Ellip\n@@ -195,16 +195,15 @@\n n x.\n-Ellipsis\n+X.Pos()\n  %7D%0A/\n@@ -217,16 +217,17 @@\n (x *\n-BasicLit\n+IndexExpr\n ) Po\n@@ -240,16 +240,21 @@\n ken.Pos \n+     \n %7B return\n@@ -260,16 +260,15 @@\n n x.\n-Value\n+X.\n Pos\n+()\n  %7D%0A/\n@@ -282,15 +282,21 @@\n (x *\n-FuncLit\n+IndexListExpr\n ) Po\n@@ -317,28 +317,25 @@\n  %7B return x.\n-Type\n+X\n .Pos() %7D%0A// \n@@ -347,20 +347,17 @@\n (x *\n-CompositeLit\n+SliceExpr\n ) Po\n@@ -370,10 +370,34 @@\n ken.Pos \n-%7B\n+     %7B return x.X.Pos() %7D\n %0A\n",
+    "timestamp": 1777509863963
+  },
+  {
+    "patch_text": "@@ -1,32 +1,50 @@\n // \n-%09if x.Type != nil %7B%0A// %09%09\n+func (x *TypeAssertExpr) Pos() token.Pos %7B \n retu\n@@ -52,47 +52,82 @@\n n x.\n-Type\n+X\n .Pos()\n-%0A// %09%7D%0A// %09return x.Lbrace%0A//\n+ %7D%0A// func (x *CallExpr) Pos() token.Pos       %7B return x.Fun.Pos()\n  %7D%0A/\n@@ -141,13 +141,12 @@\n (x *\n-Paren\n+Star\n Expr\n@@ -160,32 +160,33 @@\n  token.Pos      \n+ \n %7B return x.Lpare\n@@ -184,14 +184,12 @@\n n x.\n-Lparen\n+Star\n  %7D%0A/\n@@ -203,16 +203,13 @@\n (x *\n-Selector\n+Unary\n Expr\n@@ -228,16 +228,19 @@\n n.Pos   \n+   \n %7B return\n@@ -234,39 +234,37 @@\n      %7B return x.\n-X.\n+Op\n Pos\n-()\n  %7D%0A// func (x *I\n@@ -262,21 +262,22 @@\n unc (x *\n-Index\n+Binary\n Expr) Po\n@@ -286,33 +286,32 @@\n ) token.Pos     \n- \n %7B return x.X.Pos\n@@ -331,17 +331,16 @@\n (x *\n-IndexList\n+KeyValue\n Expr\n@@ -358,16 +358,17 @@\n en.Pos  \n+ \n %7B return\n@@ -362,33 +362,35 @@\n os   %7B return x.\n-X\n+Key\n .Pos() %7D%0A// func\n@@ -398,17 +398,82 @@\n (x *\n-SliceExpr\n+ArrayType) Pos() token.Pos      %7B return x.Lbrack %7D%0A// func (x *StructType\n ) Po\n@@ -482,33 +482,32 @@\n ) token.Pos     \n- \n %7B return x.X.Pos\n@@ -489,30 +489,132 @@\n .Pos     %7B return x.\n-X.Pos() %7D\n+Struct %7D%0A// func (x *FuncType) Pos() token.Pos %7B%0A// %09if x.Func.IsValid() %7C%7C x.Params == nil %7B // see issue 3870\n %0A\n",
+    "timestamp": 1778292863963
+  },
+  {
+    "patch_text": "@@ -1,115 +1,33 @@\n // \n-func (x *TypeAssertExpr) Pos() token.Pos %7B return x.X.Pos() %7D%0A// func (x *CallExpr) Pos() token.Pos       %7B \n+%09%09return x.Func%0A// %09%7D%0A// %09\n retu\n@@ -35,274 +35,79 @@\n n x.\n-Fun\n+Params\n .Pos() \n-%7D%0A\n // \n-func (x *StarExpr) Pos() token.Pos       %7B return x.Star %7D%0A// func (x *UnaryExpr) Pos() token.Pos      %7B return x.OpPos %7D%0A// func (x *BinaryExpr) Pos() token.Pos     %7B return x.X.Pos() %7D%0A// func (x *KeyValueExpr) Pos() token.Pos   %7B return x.Key.Pos()\n+interface method declarations have no %22func%22 keyword%0A//\n  %7D%0A/\n@@ -121,13 +121,17 @@\n (x *\n-Array\n+Interface\n Type\n@@ -148,21 +148,16 @@\n ken.Pos \n-     \n %7B return\n@@ -163,14 +163,17 @@\n n x.\n-Lbrack\n+Interface\n  %7D%0A/\n@@ -183,22 +183,19 @@\n unc (x *\n-Struct\n+Map\n Type) Po\n@@ -212,16 +212,18 @@\n Pos     \n+  \n %7B return\n@@ -229,116 +229,10 @@\n n x.\n-Struct %7D%0A// func (x *FuncType) Pos() token.Pos %7B%0A// %09if x.Func.IsValid() %7C%7C x.Params == nil %7B // see issue 3870\n+Map %7D\n %0A\n",
+    "timestamp": 1778912663963
+  },
+  {
+    "patch_text": "@@ -1,146 +1,142 @@\n // \n-%09%09return x.Func%0A// %09\n+func (x *ChanType) Pos() token.Pos      %7B return x.Begin \n %7D%0A\n+%0A\n // \n-%09return x.Params.Pos() // interface method declarations have no %22func%22 keyword%0A// %7D%0A// func (x *InterfaceType) Pos\n+func (x *BadExpr) End() token.Pos %7B return x.To %7D%0A// func (x *Ident) End\n () t\n@@ -136,32 +136,34 @@\n End() token.Pos \n+  \n %7B return x.Inter\n@@ -159,78 +159,183 @@\n urn \n-x.Interface %7D%0A// func (x *MapType) Pos() token.Pos       %7B return x.Map\n+token.Pos(int(x.NamePos) + len(x.Name)) %7D%0A// func (x *Ellipsis) End() token.Pos %7B%0A// %09if x.Elt != nil %7B%0A// %09%09return x.Elt.End()%0A// %09%7D%0A// %09return x.Ellipsis + 3 // len(%22...%22)%0A//\n  %7D%0A\n",
+    "timestamp": 1779357263963
+  },
+  {
+    "patch_text": "@@ -9,21 +9,21 @@\n (x *\n-ChanType) Pos\n+BasicLit) End\n () t\n@@ -36,16 +36,17 @@\n os      \n+ \n %7B return\n@@ -50,19 +50,52 @@\n urn \n-x.Begin\n+token.Pos(int(x.ValuePos) + len(x.Value))\n  %7D%0A\n-%0A\n // f\n@@ -106,15 +106,15 @@\n (x *\n-BadExpr\n+FuncLit\n ) En\n@@ -127,16 +127,23 @@\n ken.Pos \n+       \n %7B return\n@@ -149,10 +149,18 @@\n n x.\n-To\n+Body.End()\n  %7D%0A/\n@@ -174,12 +174,19 @@\n (x *\n-Iden\n+CompositeLi\n t) E\n@@ -215,46 +215,154 @@\n urn \n-token.Pos(int(x.NamePos) + len(x.Name)\n+x.Rbrace + 1 %7D%0A// func (x *ParenExpr) End() token.Pos      %7B return x.Rparen + 1 %7D%0A// func (x *SelectorExpr) End() token.Pos   %7B return x.Sel.End(\n ) %7D%0A\n@@ -373,24 +373,25 @@\n unc (x *\n-Ellipsis\n+IndexExpr\n ) End() \n@@ -404,103 +404,169 @@\n Pos \n-%7B%0A// %09if x.Elt != nil %7B%0A// %09%09return x.Elt.End()%0A// %09%7D%0A// %09return x.Ellipsis + 3 // len(%22...%22)%0A//\n+     %7B return x.Rbrack + 1 %7D%0A// func (x *IndexListExpr) End() token.Pos  %7B return x.Rbrack + 1 %7D%0A// func (x *SliceExpr) End() token.Pos      %7B return x.Rbrack + 1\n  %7D%0A\n",
+    "timestamp": 1779994463963
+  },
+  {
+    "patch_text": "@@ -9,16 +9,22 @@\n (x *\n-BasicLit\n+TypeAssertExpr\n ) En\n@@ -37,22 +37,16 @@\n ken.Pos \n-      \n %7B return\n@@ -50,49 +50,88 @@\n urn \n-token.Pos(int(x.ValuePos) + len(x.Value))\n+x.Rparen + 1 %7D%0A// func (x *CallExpr) End() token.Pos       %7B return x.Rparen + 1\n  %7D%0A/\n@@ -145,15 +145,16 @@\n (x *\n-FuncLit\n+StarExpr\n ) En\n@@ -169,25 +169,24 @@\n n.Pos       \n- \n %7B return x.B\n@@ -188,12 +188,9 @@\n n x.\n-Body\n+X\n .End\n@@ -210,20 +210,17 @@\n (x *\n-CompositeLit\n+UnaryExpr\n ) En\n@@ -227,32 +227,35 @@\n d() token.Pos   \n+  \n+ \n %7B return x.Rbrac\n@@ -253,18 +253,15 @@\n n x.\n-Rbrace + 1\n+X.End()\n  %7D%0A/\n@@ -275,13 +275,14 @@\n (x *\n-Paren\n+Binary\n Expr\n@@ -295,33 +295,32 @@\n ) token.Pos     \n- \n %7B return x.Rpare\n@@ -310,34 +310,31 @@\n  %7B return x.\n-Rparen + 1\n+Y.End()\n  %7D%0A// func (\n@@ -340,16 +340,16 @@\n (x *\n-Selector\n+KeyValue\n Expr\n@@ -383,11 +383,13 @@\n n x.\n-Sel\n+Value\n .End\n@@ -409,17 +409,17 @@\n (x *\n-IndexExpr\n+ArrayType\n ) En\n@@ -444,34 +444,33 @@\n  %7B return x.\n-Rbrack + 1\n+Elt.End()\n  %7D%0A// func (\n@@ -476,21 +476,18 @@\n (x *\n-IndexListExpr\n+StructType\n ) En\n@@ -501,16 +501,19 @@\n en.Pos  \n+   \n %7B return\n@@ -515,26 +515,28 @@\n eturn x.\n-Rbrack + 1\n+Fields.End()\n  %7D%0A// fu\n@@ -546,17 +546,16 @@\n (x *\n-SliceExpr\n+FuncType\n ) En\n@@ -572,33 +572,32 @@\n Pos \n-     %7B return x.Rbrack + 1 %7D\n+%7B%0A// %09if x.Results != nil %7B\n %0A\n",
+    "timestamp": 1780818263963
+  },
+  {
+    "patch_text": "@@ -1,202 +1,66 @@\n // \n-func (x *TypeAssertExpr) End() token.Pos %7B return x.Rparen + 1 %7D%0A// func (x *CallExpr) End() token.Pos       %7B return x.Rparen + 1 %7D%0A// func (x *StarExpr) End() token.Pos       %7B return x.X\n+%09%09return x.Results.End()%0A// %09%7D%0A// %09return x.Params\n .End()\n+%0A//\n  %7D%0A/\n@@ -74,17 +74,21 @@\n (x *\n-UnaryExpr\n+InterfaceType\n ) En\n@@ -93,37 +93,32 @@\n End() token.Pos \n-     \n %7B return x.X.End\n@@ -116,9 +116,15 @@\n n x.\n-X\n+Methods\n .End\n@@ -144,18 +144,15 @@\n (x *\n-BinaryExpr\n+MapType\n ) En\n@@ -173,71 +173,8 @@\n     \n-%7B return x.Y.End() %7D%0A// func (x *KeyValueExpr) End() token.Pos \n   %7B \n@@ -212,13 +212,12 @@\n (x *\n-Array\n+Chan\n Type\n@@ -254,11 +254,13 @@\n n x.\n-Elt\n+Value\n .End\n@@ -268,140 +268,96 @@\n ) %7D%0A\n+%0A\n // \n-func (x *StructType) End() token.Pos     %7B return x.Fields.End() %7D%0A// func (x *FuncType) End() token.Pos %7B%0A// %09if x.Results != nil %7B\n+// exprNode() ensures that only expression/type nodes can be%0A// // assigned to an Expr.\n %0A\n",
+    "timestamp": 1781435663963
+  },
+  {
+    "patch_text": "@@ -1,363 +1,360 @@\n // \n-%09%09return x.Results.End()%0A// %09%7D%0A// %09return x.Params.End()%0A// %7D%0A// func (x *InterfaceType) End() token.Pos %7B return x.Methods.End() %7D%0A// func (x *MapType) End() token.Pos       %7B return x.Value.End() %7D%0A// func (x *ChanType) End() token.Pos      %7B return x.Value.End() %7D%0A%0A// // exprNode() ensures that only expression/type nodes can be%0A// // assigned to an Expr.\n+func (*BadExpr) exprNode()        %7B%7D%0A// func (*Ident) exprNode()          %7B%7D%0A// func (*Ellipsis) exprNode()       %7B%7D%0A// func (*BasicLit) exprNode()       %7B%7D%0A// func (*FuncLit) exprNode()        %7B%7D%0A// func (*CompositeLit) exprNode()   %7B%7D%0A// func (*ParenExpr) exprNode()      %7B%7D%0A// func (*SelectorExpr) exprNode()   %7B%7D%0A// func (*IndexExpr) exprNode()      %7B%7D\n %0A\n",
+    "timestamp": 1781941463963
+  },
+  {
+    "patch_text": "@@ -1,44 +1,4 @@\n-// func (*BadExpr) exprNode()        %7B%7D%0A\n // f\n@@ -8,55 +8,20 @@\n  (*I\n+n\n de\n-nt) exprNode()          %7B%7D%0A// func (*Ellipsis\n+xListExpr\n ) ex\n@@ -20,37 +20,32 @@\n Expr) exprNode()\n-     \n   %7B%7D%0A// func (*B\n@@ -47,55 +47,17 @@\n c (*\n-BasicLit) exprNode()       %7B%7D%0A// func (*FuncLit\n+SliceExpr\n ) ex\n@@ -66,26 +66,24 @@\n Node()      \n- \n- \n %7B%7D%0A// func (\n@@ -87,20 +87,22 @@\n c (*\n-CompositeLit\n+TypeAssertExpr\n ) ex\n@@ -101,34 +101,32 @@\n Expr) exprNode()\n-  \n  %7B%7D%0A// func (*Pa\n@@ -127,13 +127,12 @@\n c (*\n-Paren\n+Call\n Expr\n@@ -141,32 +141,33 @@\n exprNode()      \n+ \n %7B%7D%0A// func (*Sel\n@@ -168,14 +168,10 @@\n  (*S\n-electo\n+ta\n rExp\n@@ -188,44 +188,8 @@\n e() \n-  %7B%7D%0A// func (*IndexExpr) exprNode()\n     \n",
+    "timestamp": 1782401063963
+  },
+  {
+    "patch_text": "@@ -7,17 +7,13 @@\n c (*\n-IndexList\n+Unary\n Expr\n@@ -24,16 +24,20 @@\n prNode()\n+    \n   %7B%7D%0A// \n@@ -47,13 +47,14 @@\n c (*\n-Slice\n+Binary\n Expr\n@@ -62,33 +62,32 @@\n  exprNode()     \n- \n %7B%7D%0A// func (*Typ\n@@ -87,18 +87,16 @@\n c (*\n-TypeAssert\n+KeyValue\n Expr\n@@ -107,20 +107,23 @@\n prNode()\n+  \n  %7B%7D%0A\n+%0A\n // func \n@@ -128,16 +128,17 @@\n c (*\n-CallExpr\n+ArrayType\n ) ex\n@@ -137,34 +137,32 @@\n Type) exprNode()\n-  \n      %7B%7D%0A// func \n@@ -169,32 +169,109 @@\n (*St\n-arExpr) exprNode()      \n+ructType) exprNode()    %7B%7D%0A// func (*FuncType) exprNode()      %7B%7D%0A// func (*InterfaceType) exprNode()\n  %7B%7D%0A\n",
+    "timestamp": 1782781463963
+  },
+  {
+    "patch_text": "@@ -7,17 +7,15 @@\n c (*\n-UnaryExpr\n+MapType\n ) ex\n@@ -14,32 +14,33 @@\n Type) exprNode()\n+ \n       %7B%7D%0A// func\n@@ -46,18 +46,16 @@\n c (*\n-BinaryExpr\n+ChanType\n ) ex\n@@ -71,204 +71,332 @@\n     \n+ \n %7B%7D%0A\n+%0A\n // \n-func (*KeyValueExpr) exprNode()   %7B%7D%0A%0A// func (*ArrayType) exprNode()     %7B%7D%0A// func (*StructType) exprNode()    %7B%7D%0A// func (*FuncType) exprNode()      %7B%7D%0A// func (*InterfaceType) exprNode() %7B\n+// ----------------------------------------------------------------------------%0A// // Convenience functions for Idents%0A%0A// // NewIdent creates a new %5BIdent%5D without position.%0A// // Useful for ASTs generated by code other than the Go parser.%0A// func NewIdent(name string) *Ident %7B return \u0026Ident%7Btoken.NoPos, name, nil%7D \n %7D%0A\n",
+    "timestamp": 1783256063963
+  },
+  {
+    "patch_text": "@@ -1,402 +1,291 @@\n+%0A\n // \n-func (*MapType) exprNode()       %7B%7D%0A// func (*ChanType) exprNode()      %7B%7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Convenience functions for Idents%0A%0A// // NewIdent creates a new %5BIdent%5D without position.%0A// // Useful for ASTs generated by code other than the Go parser.%0A// func NewIdent(name string) *Ident %7B return \u0026Ident%7Btoken.NoPos, name, nil%7D %7D\n+// IsExported reports whether name starts with an upper-case letter.%0A// func IsExported(name string) bool %7B return token.IsExported(name) %7D%0A%0A// // IsExported reports whether id starts with an upper-case letter.%0A// func (id *Ident) IsExported() bool %7B return token.IsExported(id.Name) %7D%0A\n %0A\n",
+    "timestamp": 1783722263963
+  },
+  {
+    "patch_text": "@@ -1,291 +1,191 @@\n-%0A\n // \n-// IsExported reports whether name starts with an upper-case letter.%0A// func IsExported(name string) bool %7B return token.IsExported(name) %7D%0A%0A// // IsExported reports whether id starts with an upper-case letter.%0A// func (id *Ident) IsExported() bool %7B return token.IsExported(id.Name) %7D%0A\n+func (id *Ident) String() string %7B%0A// %09if id != nil %7B%0A// %09%09return id.Name%0A// %09%7D%0A// %09return %22%3Cnil%3E%22%0A// %7D%0A%0A// // ----------------------------------------------------------------------------\n %0A\n",
+    "timestamp": 1784064263963
+  },
+  {
+    "patch_text": "@@ -1,191 +1,292 @@\n // \n-func (id *Ident) String() \n+// Statements%0A%0A// // A statement is represented by a tree consi\n st\n-r\n ing \n-%7B%0A// %09if id != nil %7B%0A// %09%09return id.Name\n+of one%0A// // or more of the following concrete statement nodes.%0A// type (%0A// %09// A BadStmt node is a placeholder for statements containing\n %0A// %09\n-%7D%0A\n // \n-%09return %22%3Cnil%3E%22%0A// %7D%0A\n+syntax errors for which no correct statement nodes can be\n %0A// \n+%09\n // \n-----------------------------------------------------------------------------\n+created.\n %0A\n",
+    "timestamp": 1784407463963
+  },
+  {
+    "patch_text": "@@ -1,149 +1,97 @@\n // \n+%09\n //\n- Statements%0A%0A// // A statement is represented by a tree consisting of one%0A// // or more of the following concrete statement nodes.%0A// type (\n+%0A// %09BadStmt struct %7B%0A// %09%09From, To token.Pos // position range of bad statement%0A// %09%7D%0A\n %0A// \n@@ -96,19 +96,20 @@\n / %09// A \n-Bad\n+Decl\n Stmt nod\n@@ -114,128 +114,137 @@\n ode \n-is a placeholder for statements containing%0A// %09// syntax errors for which no correct statement nodes can be%0A// %09// created.\n+represents a declaration in a statement list.%0A// %09DeclStmt struct %7B%0A// %09%09Decl Decl // *GenDecl with CONST, TYPE, or VAR token%0A// %09%7D%0A\n %0A\n",
+    "timestamp": 1784812463963
+  },
+  {
+    "patch_text": "@@ -3,248 +3,400 @@\n  %09//\n-%0A// %09BadStmt struct %7B%0A// %09%09From, To token.Pos // position range of bad statement%0A// %09%7D%0A%0A// %09// A DeclStmt node represents a declaration in a statement list.%0A// %09DeclStmt struct %7B%0A// %09%09Decl Decl // *GenDecl with CONST, TYPE, or VAR token%0A// %09%7D%0A\n+ An EmptyStmt node represents an empty statement.%0A// %09// The %22position%22 of the empty statement is the position%0A// %09// of the immediately following (explicit or implicit) semicolon.%0A// %09//%0A// %09EmptyStmt struct %7B%0A// %09%09Semicolon token.Pos // position of following %22;%22%0A// %09%09Implicit  bool      // if set, %22;%22 was omitted in the source%0A// %09%7D%0A%0A// %09// A LabeledStmt node represents a labeled statement.\n %0A\n",
+    "timestamp": 1785276263963
+  },
+  {
+    "patch_text": "@@ -1,231 +1,53 @@\n // %09\n-// An EmptyStmt node represents an empty statement.%0A// %09// The %22position%22 of the empty statement is the position%0A// %09// of the immediately following (explicit or implicit) semicolon.%0A// %09//%0A// %09EmptyStmt struct %7B\n+LabeledStmt struct %7B%0A// %09%09Label *Ident\n %0A// %09%09\n-Semic\n+C\n olon\n@@ -76,87 +76,27 @@\n  of \n-following %22;%22%0A// %09%09Implicit  bool      // if set, %22;%22 was omitted in the source\n+%22:%22%0A// %09%09Stmt  Stmt\n %0A// \n@@ -111,16 +111,14 @@\n // A\n- Labeled\n+n Expr\n Stmt\n@@ -140,23 +140,64 @@\n s a \n-labeled statement.\n+(stand-alone) expression%0A// %09// in a statement list.%0A// %09//\n %0A\n",
+    "timestamp": 1785681263963
+  },
+  {
+    "patch_text": "@@ -1,15 +1,12 @@\n // %09\n-Labeled\n+Expr\n Stmt\n@@ -24,76 +24,28 @@\n / %09%09\n-Label *Ident%0A// %09%09Colon token.Pos // position of %22:%22%0A// %09%09Stmt  Stmt\n+X Expr // expression\n %0A// \n@@ -60,14 +60,13 @@\n // A\n-n Expr\n+ Send\n Stmt\n@@ -88,64 +88,99 @@\n s a \n-(stand-alone) expression%0A// %09// in a statement list.%0A// %09//\n+send statement.%0A// %09SendStmt struct %7B%0A// %09%09Chan  Expr%0A// %09%09Arrow token.Pos // position of %22%3C-%22\n %0A\n",
+    "timestamp": 1785957263963
+  },
+  {
+    "patch_text": "@@ -1,51 +1,19 @@\n // %09\n-ExprStmt struct %7B%0A// %09%09X Expr // expression\n+%09Value Expr\n %0A// \n@@ -28,13 +28,16 @@\n // A\n- Send\n+n IncDec\n Stmt\n@@ -58,13 +58,32 @@\n ts a\n- send\n+n increment or decrement\n  sta\n@@ -98,12 +98,14 @@\n // %09\n-Send\n+IncDec\n Stmt\n@@ -123,56 +123,16 @@\n / %09%09\n-Chan  Expr%0A// %09%09Arrow token.Pos // position of %22%3C-%22\n+X      Expr\n %0A\n",
+    "timestamp": 1786184663963
+  },
+  {
+    "patch_text": "@@ -2,18 +2,83 @@\n / %09%09\n-Value Expr\n+TokPos token.Pos   // position of Tok%0A// %09%09Tok    token.Token // INC or DEC\n %0A// \n@@ -91,22 +91,22 @@\n  %09// An \n-IncDec\n+Assign\n Stmt nod\n@@ -125,79 +125,86 @@\n  an \n-incre\n+assign\n ment or\n- decrement statement.%0A// %09IncDecStmt struct %7B%0A// %09%09X      Expr\n+%0A// %09// a short variable declaration.%0A// %09//%0A// %09AssignStmt struct %7B\n %0A\n",
+    "timestamp": 1786428263963
+  },
+  {
+    "patch_text": "@@ -1,16 +1,35 @@\n+// %09%09Lhs    %5B%5DExpr%0A\n // %09%09TokPos toke\n@@ -86,144 +86,55 @@\n  // \n-INC or DEC%0A// %09%7D%0A%0A// %09// An AssignStmt node represents an assignment or%0A// %09// a short variable declaration.%0A// %09//%0A// %09AssignStmt struct %7B\n+assignment token, DEFINE%0A// %09%09Rhs    %5B%5DExpr%0A// %09%7D%0A\n %0A\n",
+    "timestamp": 1786632263963
+  },
+  {
+    "patch_text": "@@ -1,34 +1,81 @@\n // %09\n-%09Lhs    %5B%5DExpr%0A// %09%09TokPos\n+// A GoStmt node represents a go statement.%0A// %09GoStmt struct %7B%0A// %09%09Go  \n  tok\n@@ -81,18 +81,16 @@\n ken.Pos \n-  \n // posit\n@@ -100,86 +100,173 @@\n  of \n-Tok%0A// %09%09Tok    token.Token // assignment token, DEFINE%0A// %09%09Rhs    %5B%5DExpr%0A// %09%7D%0A\n+%22go%22 keyword%0A// %09%09Call *CallExpr%0A// %09%7D%0A%0A// %09// A DeferStmt node represents a defer statement.%0A// %09DeferStmt struct %7B%0A// %09%09Defer token.Pos // position of %22defer%22 keyword\n %0A\n",
+    "timestamp": 1786963463963
+  },
+  {
+    "patch_text": "@@ -1,120 +1,4 @@\n-// %09// A GoStmt node represents a go statement.%0A// %09GoStmt struct %7B%0A// %09%09Go   token.Pos // position of %22go%22 keyword%0A\n // %09\n@@ -3,16 +3,17 @@\n  %09%09Call \n+ \n *CallExp\n@@ -30,21 +30,22 @@\n / %09// A \n-Defer\n+Return\n Stmt nod\n@@ -59,21 +59,22 @@\n sents a \n-defer\n+return\n  stateme\n@@ -81,21 +81,22 @@\n nt.%0A// %09\n-Defer\n+Return\n Stmt str\n@@ -110,13 +110,15 @@\n / %09%09\n-Defer\n+Return \n  tok\n@@ -144,13 +144,14 @@\n of %22\n-defer\n+return\n %22 ke\n@@ -156,8 +156,67 @@\n keyword%0A\n+// %09%09Results %5B%5DExpr    // result expressions; or nil%0A// %09%7D%0A\n",
+    "timestamp": 1787321663963
+  },
+  {
+    "patch_text": "@@ -1,31 +1,4 @@\n-// %09%09Call  *CallExpr%0A// %09%7D%0A\n %0A// \n@@ -3,22 +3,22 @@\n / %09// A \n-Return\n+Branch\n Stmt nod\n@@ -32,22 +32,60 @@\n sents a \n+b\n re\n-turn\n+ak, continue, goto,%0A// %09// or fallthrough\n  stateme\n@@ -92,22 +92,29 @@\n nt.%0A// %09\n-Return\n+//%0A// %09Branch\n Stmt str\n@@ -128,15 +128,14 @@\n / %09%09\n-Return \n+TokPos\n  tok\n@@ -141,16 +141,18 @@\n ken.Pos \n+  \n // posit\n@@ -162,69 +162,127 @@\n  of \n-%22return%22 keyword%0A// %09%09Results %5B%5DExpr    // result expressions\n+Tok%0A// %09%09Tok    token.Token // keyword token (BREAK, CONTINUE, GOTO, FALLTHROUGH)%0A// %09%09Label  *Ident      // label name\n ; or\n",
+    "timestamp": 1787705063963
+  },
+  {
+    "patch_text": "@@ -4,21 +4,20 @@\n  %09// A B\n-ranch\n+lock\n Stmt nod\n@@ -37,50 +37,12 @@\n a br\n-eak, continue, goto,%0A// %09// or fallthrough\n+aced\n  sta\n@@ -51,27 +51,24 @@\n ment\n-.%0A// %09//\n+ list.\n %0A// %09B\n-ranch\n+lock\n Stmt\n@@ -86,14 +86,14 @@\n / %09%09\n-TokPos\n+Lbrace\n  tok\n@@ -99,18 +99,16 @@\n ken.Pos \n-  \n // posit\n@@ -118,138 +118,119 @@\n  of \n-Tok\n+%22%7B%22\n %0A// %09%09\n-Tok    token.Token // keyword token (BREAK, CONTINUE, GOTO, FALLTHROUGH)%0A// %09%09Label  *Ident      // label name; or nil\n+List   %5B%5DStmt%0A// %09%09Rbrace token.Pos // position of %22%7D%22, if any (may be absent due to syntax error)\n %0A// %09%7D%0A\n+%0A\n",
+    "timestamp": 1788087863963
+  },
+  {
+    "patch_text": "@@ -1,13 +1,12 @@\n-%0A\n // %09// A\n  Blo\n@@ -5,14 +5,12 @@\n // A\n- Block\n+n If\n Stmt\n@@ -31,15 +31,12 @@\n ts a\n- braced\n+n if\n  sta\n@@ -45,24 +45,16 @@\n ment\n- list\n .%0A// %09\n-Block\n+If\n Stmt\n@@ -72,14 +72,12 @@\n / %09%09\n-Lbrace\n+If  \n  tok\n@@ -103,118 +103,170 @@\n of %22\n-%7B%22%0A// %09%09List   %5B%5DStmt%0A// %09%09Rbrace token.Pos // position of %22%7D%22, if any (may be absent due to syntax error)\n+if%22 keyword%0A// %09%09Init Stmt      // initialization statement; or nil%0A// %09%09Cond Expr      // condition%0A// %09%09Body *BlockStmt%0A// %09%09Else Stmt // else branch; or nil\n %0A// %09%7D%0A\n-%0A\n",
+    "timestamp": 1788459263963
+  },
+  {
+    "patch_text": "@@ -1,12 +1,13 @@\n+%0A\n // %09// A\n n If\n@@ -6,38 +6,69 @@\n // A\n-n IfStmt node represents an if\n+ CaseClause represents a case of an expression or type switch\n  sta\n@@ -83,14 +83,18 @@\n // %09\n-IfStmt\n+CaseClause\n  str\n@@ -108,11 +108,12 @@\n / %09%09\n-If \n+Case\n   to\n@@ -140,159 +140,190 @@\n of %22\n-if%22 keyword%0A// %09%09Init Stmt      // initialization statement; or nil%0A// %09%09Cond Expr      // condition%0A// %09%09Body *BlockStmt%0A// %09%09Else Stmt // else branch\n+case%22 or %22default%22 keyword%0A// %09%09List  %5B%5DExpr    // list of expressions or types; nil means default case%0A// %09%09Colon token.Pos // position of %22:%22%0A// %09%09Body  %5B%5DStmt    // statement list\n ; or\n@@ -331,10 +331,4 @@\n nil%0A\n-// %09%7D%0A\n",
+    "timestamp": 1788908663963
+  },
+  {
+    "patch_text": "@@ -1,12 +1,18 @@\n+// %09%7D%0A\n %0A// %09// A Ca\n@@ -9,25 +9,30 @@\n / %09// A \n-CaseClaus\n+SwitchStmt nod\n e repres\n@@ -40,18 +40,8 @@\n nts \n-a case of \n an e\n@@ -54,16 +54,8 @@\n ion \n-or type \n swit\n@@ -76,18 +76,18 @@\n // %09\n-CaseClause\n+SwitchStmt\n  str\n@@ -101,13 +101,14 @@\n / %09%09\n-Case \n+Switch\n  tok\n@@ -106,32 +106,33 @@\n witch token.Pos \n+ \n // position of %22\n@@ -135,25 +135,14 @@\n of %22\n-case%22 or %22default\n+switch\n %22 ke\n@@ -156,119 +156,110 @@\n / %09%09\n-List  %5B%5DExpr\n+Init   Stmt  \n     \n+ \n // \n-list of expressions or types; nil means default case%0A// %09%09Colon token.Pos // posit\n+initialization statement; or nil%0A// %09%09Tag    Expr       // tag express\n ion\n+;\n  o\n-f %22:%22\n+r nil\n %0A// \n@@ -270,40 +270,42 @@\n dy  \n-%5B%5D\n+ *Block\n Stmt \n-   \n // \n-statement list; or nil\n+CaseClauses only%0A// %09%7D\n %0A\n",
+    "timestamp": 1789419863963
+  },
+  {
+    "patch_text": "@@ -1,14 +1,8 @@\n-// %09%7D%0A\n %0A// %09// \n@@ -3,16 +3,20 @@\n / %09// A \n+Type\n SwitchSt\n@@ -39,20 +39,13 @@\n ts a\n-n expression\n+ type\n  swi\n@@ -63,16 +63,20 @@\n nt.%0A// %09\n+Type\n SwitchSt\n@@ -210,51 +210,54 @@\n / %09%09\n-Tag    Expr       // tag expression; or nil\n+Assign Stmt       // x := y.(type) or y.(type)\n %0A// \n@@ -300,10 +300,4 @@\n nly%0A\n-// %09%7D%0A\n",
+    "timestamp": 1789641863963
+  },
+  {
+    "patch_text": "@@ -1,12 +1,18 @@\n+// %09%7D%0A\n %0A// %09// A Ty\n@@ -9,30 +9,26 @@\n / %09// A \n-TypeSwitchStmt\n+CommClause\n  node re\n@@ -42,19 +42,24 @@\n s a \n-type switch\n+case of a select\n  sta\n@@ -74,22 +74,18 @@\n // %09\n-TypeSwitchStmt\n+CommClause\n  str\n@@ -99,14 +99,13 @@\n / %09%09\n-Switch\n+Case \n  tok\n@@ -111,17 +111,16 @@\n ken.Pos \n- \n // posit\n@@ -131,174 +131,31 @@\n of %22\n-switch%22 keyword%0A// %09%09Init   Stmt       // initialization statement; or nil%0A// %09%09Assign Stmt       // x := y.(type) or y.(type)%0A// %09%09Body   *BlockStmt // CaseClauses only\n+case%22 or %22default%22 keyword\n %0A\n",
+    "timestamp": 1790001863963
+  },
+  {
+    "patch_text": "@@ -1,30 +1,191 @@\n // %09\n-%7D%0A%0A// %09// A CommClause\n+%09Comm  Stmt      // send or receive statement; nil means default case%0A// %09%09Colon token.Pos // position of %22:%22%0A// %09%09Body  %5B%5DStmt    // statement list; or nil%0A// %09%7D%0A%0A// %09// A SelectStmt\n  nod\n@@ -203,18 +203,8 @@\n s a \n-case of a \n sele\n@@ -225,18 +225,18 @@\n // %09\n-CommClause\n+SelectStmt\n  str\n@@ -250,13 +250,14 @@\n / %09%09\n-Case \n+Select\n  tok\n@@ -255,32 +255,33 @@\n elect token.Pos \n+ \n // position of %22\n@@ -284,24 +284,13 @@\n of %22\n-case%22 or %22defaul\n+selec\n t%22 k\n",
+    "timestamp": 1790345063963
+  },
+  {
+    "patch_text": "@@ -2,87 +2,128 @@\n / %09%09\n-Comm  Stmt      // send or receive statement; nil means default case\n+Body   *BlockStmt // CommClauses only%0A// %09%7D%0A%0A// %09// A ForStmt represents a for statement.%0A// %09ForStmt struct %7B\n %0A// %09%09\n-Colon\n+For \n  tok\n@@ -149,32 +149,39 @@\n of %22\n-:%22%0A// %09%09Body  %5B%5D\n+for%22 keyword%0A// %09%09Init \n Stmt    \n // s\n@@ -176,18 +176,35 @@\n Stmt    \n+ \n+ \n //\n+ initialization\n  stateme\n@@ -209,13 +209,8 @@\n ment\n- list\n ; or\n@@ -222,142 +222,97 @@\n // %09\n-%7D%0A%0A// %09// A SelectStmt node represents a select statement.%0A// %09SelectStmt struct %7B%0A// %09%09Select token.Pos  // position of %22select%22 keyword\n+%09Cond Expr      // condition; or nil%0A// %09%09Post Stmt      // post iteration statement; or nil\n %0A\n",
+    "timestamp": 1790813663963
+  },
+  {
+    "patch_text": "@@ -3,18 +3,16 @@\n  %09%09Body \n-  \n *BlockSt\n@@ -17,28 +17,8 @@\n Stmt\n- // CommClauses only\n %0A// \n@@ -30,19 +30,21 @@\n / %09// A \n-For\n+Range\n Stmt rep\n@@ -70,17 +70,39 @@\n ment\n+ with a range clause\n .%0A// %09\n-For\n+Range\n Stmt\n@@ -121,16 +121,22 @@\n  %09%09For  \n+      \n token.Po\n@@ -137,16 +137,18 @@\n ken.Pos \n+  \n // posit\n@@ -177,151 +177,121 @@\n / %09%09\n-Init Stmt      // initialization statement; or nil%0A// %09%09Cond Expr      // condition; or nil%0A// %09%09Post Stmt  \n+Key, Value Expr        // Key, Value may be nil%0A// %09%09TokPos     token.Pos\n    \n- \n // pos\n-t iteration statement; or\n+ition of Tok; invalid if Key ==\n  nil\n",
+    "timestamp": 1791204863963
+  },
+  {
+    "patch_text": "@@ -2,131 +2,82 @@\n / %09%09\n-Body *BlockStmt%0A// %09%7D%0A%0A// %09// A RangeStmt represents a for statement with a range clause.\n+Tok        token.Token // ILLEGAL if Key == nil, ASSIGN, DEFINE\n %0A// %09\n+%09\n Range\n-Stmt struct %7B%0A// %09%09For  \n     \n@@ -110,11 +110,13 @@\n of %22\n-for\n+range\n %22 ke\n@@ -126,26 +126,26 @@\n rd%0A// %09%09\n-Key, Value\n+X         \n  Expr   \n@@ -156,96 +156,57 @@\n  // \n-Key, Value may be nil%0A// %09%09TokPos     token.Pos   // position of Tok; invalid if Key == nil\n+value to range over%0A// %09%09Body       *BlockStmt%0A// %09%7D\n %0A\n",
+    "timestamp": 1791552863963
+  },
+  {
+    "patch_text": "@@ -1,212 +1,192 @@\n // \n-%09%09Tok        token.Token // ILLEGAL if Key == nil, ASSIGN, DEFINE%0A// %09%09Range      token.Pos   // position of %22range%22 keyword%0A// %09%09X          Expr        // value to range over%0A// %09%09Body       *BlockStmt%0A// %09\n+)%0A%0A// // Pos and End implementations for statement nodes.%0A%0A// func (s *BadStmt) Pos() token.Pos        %7B return s.From %7D%0A// func (s *DeclStmt) Pos() token.Pos       %7B return s.Decl.Pos() \n %7D%0A\n",
+    "timestamp": 1791839063963
+  },
+  {
+    "patch_text": "@@ -1,65 +1,407 @@\n // \n-)%0A%0A// // Pos and End implementations for statement nodes.%0A\n+func (s *EmptyStmt) Pos() token.Pos      %7B return s.Semicolon %7D%0A// func (s *LabeledStmt) Pos() token.Pos    %7B return s.Label.Pos() %7D%0A// func (s *ExprStmt) Pos() token.Pos       %7B return s.X.Pos() %7D%0A// func (s *SendStmt) Pos() token.Pos       %7B return s.Chan.Pos() %7D%0A// func (s *IncDecStmt) Pos() token.Pos     %7B return s.X.Pos() %7D%0A// func (s *AssignStmt) Pos() token.Pos     %7B return s.Lhs%5B0%5D.Pos() %7D\n %0A// \n@@ -413,11 +413,10 @@\n (s *\n-Bad\n+Go\n Stmt\n@@ -436,24 +436,25 @@\n .Pos        \n+ \n %7B return s.F\n@@ -456,12 +456,10 @@\n n s.\n-From\n+Go\n  %7D%0A/\n@@ -471,18 +471,19 @@\n c (s *De\n-cl\n+fer\n Stmt) Po\n@@ -493,33 +493,32 @@\n  token.Pos      \n- \n %7B return s.Decl.\n@@ -518,15 +518,10 @@\n s.De\n-cl.Pos()\n+fer\n  %7D%0A\n",
+    "timestamp": 1792349063963
+  },
+  {
+    "patch_text": "@@ -9,13 +9,14 @@\n (s *\n-Empty\n+Return\n Stmt\n@@ -29,33 +29,32 @@\n ) token.Pos     \n- \n %7B return s.Semic\n@@ -52,86 +52,14 @@\n n s.\n-Semicolon %7D%0A// func (s *LabeledStmt) Pos() token.Pos    %7B return s.Label.Pos()\n+Return\n  %7D%0A/\n@@ -73,12 +73,14 @@\n (s *\n-Expr\n+Branch\n Stmt\n@@ -93,34 +93,32 @@\n ) token.Pos     \n-  \n %7B return s.X.Pos\n@@ -104,39 +104,38 @@\n      %7B return s.\n-X.\n+Tok\n Pos\n-()\n  %7D%0A// func (s *S\n@@ -137,12 +137,13 @@\n (s *\n-Send\n+Block\n Stmt\n@@ -161,25 +161,24 @@\n en.Pos      \n- \n %7B return s.C\n@@ -180,18 +180,14 @@\n n s.\n-Chan.Pos()\n+Lbrace\n  %7D%0A/\n@@ -202,13 +202,9 @@\n s *I\n-ncDec\n+f\n Stmt\n@@ -217,32 +217,36 @@\n ) token.Pos     \n+    \n %7B return s.X.Pos\n@@ -244,15 +244,10 @@\n n s.\n-X.Pos()\n+If\n  %7D%0A/\n@@ -261,18 +261,18 @@\n (s *\n-AssignStmt\n+CaseClause\n ) Po\n@@ -304,20 +304,12 @@\n n s.\n-Lhs%5B0%5D.Pos()\n+Case\n  %7D%0A/\n@@ -323,73 +323,14 @@\n (s *\n-GoStmt) Pos() token.Pos         %7B return s.Go %7D%0A// func (s *Defer\n+Switch\n Stmt\n@@ -343,33 +343,32 @@\n ) token.Pos     \n- \n %7B return s.Defer\n@@ -366,12 +366,13 @@\n n s.\n-Defer\n+Switch\n  %7D%0A\n",
+    "timestamp": 1793006663963
+  },
+  {
+    "patch_text": "@@ -5,22 +5,26 @@\n unc (s *\n-Return\n+TypeSwitch\n Stmt) Po\n@@ -29,36 +29,32 @@\n Pos() token.Pos \n-    \n %7B return s.Retur\n@@ -52,14 +52,14 @@\n n s.\n-Return\n+Switch\n  %7D%0A/\n@@ -73,18 +73,18 @@\n (s *\n-BranchStmt\n+CommClause\n ) Po\n@@ -116,14 +116,12 @@\n n s.\n-TokPos\n+Case\n  %7D%0A/\n@@ -135,13 +135,14 @@\n (s *\n-Block\n+Select\n Stmt\n@@ -159,25 +159,24 @@\n ken.Pos     \n- \n %7B return s.L\n@@ -178,14 +178,14 @@\n n s.\n-Lbrace\n+Select\n  %7D%0A/\n@@ -195,18 +195,19 @@\n unc (s *\n-If\n+For\n Stmt) Po\n@@ -223,25 +223,24 @@\n .Pos        \n- \n %7B return s.I\n@@ -242,10 +242,11 @@\n n s.\n-If\n+For\n  %7D%0A/\n@@ -260,76 +260,13 @@\n (s *\n-CaseClause) Pos() token.Pos     %7B return s.Case %7D%0A// func (s *Switch\n+Range\n Stmt\n@@ -279,32 +279,33 @@\n ) token.Pos     \n+ \n %7B return s.Switc\n@@ -287,29 +287,26 @@\n Pos      %7B return s.\n-Switch\n+For\n  %7D%0A\n",
+    "timestamp": 1793511263963
+  },
+  {
+    "patch_text": "@@ -1,20 +1,21 @@\n+%0A\n // func (s *TypeSwit\n@@ -10,27 +10,20 @@\n (s *\n-TypeSwitch\n+Bad\n Stmt) \n-Pos\n+End\n () t\n@@ -31,16 +31,17 @@\n ken.Pos \n+ \n %7B return\n@@ -47,14 +47,10 @@\n n s.\n-Switch\n+To\n  %7D%0A/\n@@ -64,23 +64,21 @@\n (s *\n-CommClause) Pos\n+DeclStmt) End\n () t\n@@ -78,36 +78,32 @@\n End() token.Pos \n-    \n %7B return s.Case \n@@ -101,12 +101,18 @@\n n s.\n-Case\n+Decl.End()\n  %7D%0A/\n@@ -126,23 +126,22 @@\n (s *\n-Select\n+Empty\n Stmt) \n-Pos\n+End\n () t\n@@ -153,90 +153,104 @@\n Pos \n-    %7B return s.Select %7D%0A// func (s *ForStmt) Pos() token.Pos        %7B return s.For\n+%7B%0A// %09if s.Implicit %7B%0A// %09%09return s.Semicolon%0A// %09%7D%0A// %09return s.Semicolon + 1 /* len(%22;%22) */%0A//\n  %7D%0A/\n@@ -264,22 +264,24 @@\n (s *\n-Range\n+Labeled\n Stmt) \n-Pos\n+End\n () t\n@@ -289,21 +289,16 @@\n ken.Pos \n-     \n %7B return\n@@ -304,10 +304,17 @@\n n s.\n-For\n+Stmt.End()\n  %7D%0A\n",
+    "timestamp": 1794044063963
+  },
+  {
+    "patch_text": "@@ -1,21 +1,20 @@\n-%0A\n // func (s *BadStmt)\n@@ -9,11 +9,12 @@\n (s *\n-Bad\n+Expr\n Stmt\n@@ -32,16 +32,18 @@\n en.Pos  \n+  \n %7B return\n@@ -49,10 +49,15 @@\n n s.\n-To\n+X.End()\n  %7D%0A/\n@@ -67,20 +67,20 @@\n unc (s *\n-Decl\n+Send\n Stmt) En\n@@ -85,32 +85,35 @@\n End() token.Pos \n+   \n %7B return s.Decl.\n@@ -111,12 +111,13 @@\n n s.\n-Decl\n+Value\n .End\n@@ -137,13 +137,14 @@\n (s *\n-Empty\n+IncDec\n Stmt\n@@ -171,98 +171,187 @@\n // %09\n-if s.Implicit %7B%0A// %09%09return s.Semicolon\n+return s.TokPos + 2 /* len(%22++%22) */\n %0A// \n-%09\n %7D%0A// \n-%09return s.Semicolon + 1 /* len(%22;%22) */%0A//\n+func (s *AssignStmt) End() token.Pos %7B return s.Rhs%5Blen(s.Rhs)-1%5D.End() %7D%0A// func (s *GoStmt) End() token.Pos     %7B return s.Call.End()\n  %7D%0A/\n@@ -365,15 +365,13 @@\n (s *\n-Labeled\n+Defer\n Stmt\n@@ -380,32 +380,33 @@\n End() token.Pos \n+ \n %7B return s.Stmt.\n@@ -404,17 +404,95 @@\n n s.\n+Call.End() %7D%0A// func (s *Return\n Stmt\n-.\n+) \n End() \n-%7D\n+token.Pos %7B%0A// %09if n := len(s.Results); n %3E 0 %7B\n %0A\n",
+    "timestamp": 1794653063963
+  },
+  {
+    "patch_text": "@@ -1,173 +1,42 @@\n // \n-func (s *ExprStmt) End() token.Pos    %7B return s.X.End() %7D%0A// func (s *SendStmt) End() token.Pos    %7B return s.Value\n+%09%09return s.Results%5Bn-1%5D\n .End()\n- %7D\n %0A// \n-func (s *IncDecStmt) End() token.Pos %7B\n+%09%7D\n %0A// \n@@ -49,34 +49,35 @@\n n s.\n-TokPos + 2 /*\n+Return + 6 //\n  len(%22\n-++%22) */\n+return%22)\n %0A// \n@@ -94,14 +94,14 @@\n (s *\n-Assign\n+Branch\n Stmt\n@@ -123,150 +123,38 @@\n os %7B\n- return s.Rhs%5Blen(s.Rhs)-1%5D.End() %7D%0A// func (s *GoStmt) End() token.Pos     %7B return s.Call.End() %7D%0A// func (s *DeferStmt) End() token.Pos  %7B \n+%0A// %09if s.Label != nil %7B%0A// %09%09\n retu\n@@ -162,95 +162,22 @@\n n s.\n-Cal\n+Labe\n l.End()\n- %7D%0A// func (s *ReturnStmt) End() token.Pos %7B%0A// %09if n := len(s.Results); n %3E 0 %7B\n+%0A// %09%7D\n %0A\n",
+    "timestamp": 1795140263963
+  },
+  {
+    "patch_text": "@@ -1,82 +1,60 @@\n // %09\n-%09\n return \n-s.Results%5Bn-1%5D.End()%0A// %09%7D%0A// %09return s.Return + 6 // len(%22return%22\n+token.Pos(int(s.TokPos) + len(s.Tok.String())\n )%0A//\n@@ -73,13 +73,12 @@\n s *B\n-ranch\n+lock\n Stmt\n@@ -110,20 +110,24 @@\n f s.\n-Label != nil\n+Rbrace.IsValid()\n  %7B%0A/\n@@ -143,22 +143,54 @@\n n s.\n-Label.End()%0A// %09%7D\n+Rbrace + 1%0A// %09%7D%0A// %09if n := len(s.List); n %3E 0 %7B\n %0A\n",
+    "timestamp": 1795391663963
+  },
+  {
+    "patch_text": "@@ -1,61 +1,63 @@\n // %09\n+%09\n return \n-token.Pos(int(s.TokPos) + len(s.Tok.String()))\n+s.List%5Bn-1%5D.End()%0A// %09%7D%0A// %09return s.Lbrace + 1\n %0A// \n@@ -74,13 +74,10 @@\n (s *\n-Block\n+If\n Stmt\n@@ -109,87 +109,18 @@\n f s.\n-Rbrace.IsValid() %7B%0A// %09%09return s.Rbrace + 1%0A// %09%7D%0A// %09if n := len(s.List); n %3E 0\n+Else != nil\n  %7B%0A\n",
+    "timestamp": 1795604063963
+  },
+  {
+    "patch_text": "@@ -11,17 +11,12 @@\n n s.\n-List%5Bn-1%5D\n+Else\n .End\n@@ -41,18 +41,18 @@\n n s.\n-Lbrace + 1\n+Body.End()\n %0A// \n@@ -69,14 +69,18 @@\n (s *\n-IfStmt\n+CaseClause\n ) En\n@@ -106,20 +106,94 @@\n %09if \n-s.Else != nil %7B\n+n := len(s.Body); n %3E 0 %7B%0A// %09%09return s.Body%5Bn-1%5D.End()%0A// %09%7D%0A// %09return s.Colon + 1%0A// %7D\n %0A\n",
+    "timestamp": 1795805663963
+  },
+  {
+    "patch_text": "@@ -1,21 +1,62 @@\n // \n-%09%09\n+func (s *SwitchStmt) End() token.Pos     %7B \n return s.Else.En\n@@ -52,29 +52,67 @@\n n s.\n-Else\n+Body\n .End()\n-%0A// %09%7D%0A// %09\n+ %7D%0A// func (s *TypeSwitchStmt) End() token.Pos %7B \n retu\n@@ -126,19 +126,16 @@\n dy.End()\n-%0A//\n  %7D%0A// fu\n@@ -146,11 +146,11 @@\n s *C\n-ase\n+omm\n Clau\n@@ -238,38 +238,10 @@\n d()%0A\n+\n // %09%7D%0A\n-// %09return s.Colon + 1%0A// %7D%0A\n",
+    "timestamp": 1796051063963
+  },
+  {
+    "patch_text": "@@ -1,20 +1,48 @@\n+// %09return s.Colon + 1%0A// %7D%0A\n // func (s *SwitchSt\n@@ -34,21 +34,21 @@\n nc (s *S\n-witch\n+elect\n Stmt) En\n@@ -61,20 +61,16 @@\n ken.Pos \n-    \n %7B return\n@@ -101,18 +101,11 @@\n (s *\n-TypeSwitch\n+For\n Stmt\n@@ -114,32 +114,35 @@\n End() token.Pos \n+   \n %7B return s.Body.\n@@ -165,18 +165,17 @@\n (s *\n-CommClause\n+RangeStmt\n ) En\n@@ -192,75 +192,154 @@\n Pos \n-%7B%0A// %09if n := len(s.Body); n %3E 0 %7B%0A// %09%09return s.Body%5Bn-1%5D.End()%0A// %09\n+ %7B return s.Body.End() %7D%0A%0A// // stmtNode() ensures that only statement nodes can be%0A// // assigned to a Stmt.%0A// func (*BadStmt) stmtNode()        %7B\n %7D%0A\n",
+    "timestamp": 1796440463963
+  },
+  {
+    "patch_text": "@@ -1,94 +1,122 @@\n // \n-%09return s.Colon + 1%0A// %7D%0A// func (s *SelectStmt) End() token.Pos %7B return s.Body.End() \n+func (*DeclStmt) stmtNode()       %7B%7D%0A// func (*EmptyStmt) stmtNode()      %7B%7D%0A// func (*LabeledStmt) stmtNode()    %7B\n %7D%0A//\n@@ -126,211 +126,198 @@\n nc (\n-s *Fo\n+*Exp\n rStmt) \n-End() token.Pos    %7B return s.Body.End() %7D%0A// func (s *RangeStmt) End() token.Pos  %7B return s.Body.End() %7D%0A%0A// // stmtNode() ensures that only statement nodes can be%0A// // assigned to a Stmt.\n+stmtNode()       %7B%7D%0A// func (*SendStmt) stmtNode()       %7B%7D%0A// func (*IncDecStmt) stmtNode()     %7B%7D%0A// func (*AssignStmt) stmtNode()     %7B%7D%0A// func (*GoStmt) stmtNode()         %7B%7D\n %0A// \n@@ -327,11 +327,13 @@\n c (*\n-Bad\n+Defer\n Stmt\n@@ -340,23 +340,21 @@\n ) stmtNode()\n-  \n       %7B%7D%0A\n",
+    "timestamp": 1796947463963
+  },
+  {
+    "patch_text": "@@ -7,12 +7,14 @@\n c (*\n-Decl\n+Return\n Stmt\n@@ -22,34 +22,32 @@\n  stmtNode()     \n-  \n %7B%7D%0A// func (*Emp\n@@ -47,13 +47,14 @@\n c (*\n-Empty\n+Branch\n Stmt\n@@ -66,25 +66,24 @@\n tNode()     \n- \n %7B%7D%0A// func (\n@@ -87,15 +87,13 @@\n c (*\n-Labeled\n+Block\n Stmt\n@@ -104,24 +104,26 @@\n mtNode()    \n+  \n %7B%7D%0A// func (\n@@ -127,12 +127,10 @@\n c (*\n-Expr\n+If\n Stmt\n@@ -133,32 +133,34 @@\n Stmt) stmtNode()\n+  \n        %7B%7D%0A// fun\n@@ -167,16 +167,18 @@\n c (*\n-SendStmt\n+CaseClause\n ) st\n@@ -181,26 +181,24 @@\n ) stmtNode()\n-  \n      %7B%7D%0A// f\n@@ -207,14 +207,14 @@\n c (*\n-IncDec\n+Switch\n Stmt\n@@ -247,14 +247,18 @@\n c (*\n-Assign\n+TypeSwitch\n Stmt\n@@ -261,36 +261,32 @@\n Stmt) stmtNode()\n-    \n  %7B%7D%0A// func (*Go\n@@ -287,14 +287,18 @@\n c (*\n-GoStmt\n+CommClause\n ) st\n@@ -297,36 +297,32 @@\n ause) stmtNode()\n-    \n      %7B%7D%0A// func \n@@ -327,13 +327,14 @@\n c (*\n-Defer\n+Select\n Stmt\n@@ -333,29 +333,28 @@\n lectStmt) stmtNode()\n- \n      %7B%7D%0A\n",
+    "timestamp": 1797523463963
+  },
+  {
+    "patch_text": "@@ -7,14 +7,11 @@\n c (*\n-Return\n+For\n Stmt\n@@ -19,32 +19,35 @@\n  stmtNode()     \n+   \n %7B%7D%0A// func (*Bra\n@@ -47,53 +47,13 @@\n c (*\n-BranchStmt) stmtNode()     %7B%7D%0A// func (*Block\n+Range\n Stmt\n@@ -77,244 +77,107 @@\n  %7B%7D%0A\n+%0A\n // \n-func (*IfStmt) stmtNode()         %7B%7D%0A// func (*CaseClause) stmtNode()     %7B%7D%0A// func (*SwitchStmt) stmtNode()     %7B%7D%0A// func (*TypeSwitchStmt) stmtNode() %7B%7D%0A// func (*CommClause) stmtNode()     %7B%7D%0A// func (*SelectStmt) stmtNode()     %7B%7D\n+// ----------------------------------------------------------------------------%0A// // Declarations\n %0A\n",
+    "timestamp": 1797898463963
+  },
+  {
+    "patch_text": "@@ -1,183 +1,234 @@\n+%0A\n // \n-func (*ForStmt) stmtNode()        %7B%7D%0A// func (*RangeStmt) stmtNode()      %7B%7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Declarations\n+// A Spec node represents a single (non-parenthesized) import,%0A// // constant, type, or variable declaration.%0A// type (%0A// %09// The Spec type stands for any of *ImportSpec, *ValueSpec, and *TypeSpec.%0A// %09Spec interface %7B%0A// %09%09Node\n %0A\n",
+    "timestamp": 1798188263963
+  },
+  {
+    "patch_text": "@@ -1,13 +1,43 @@\n-%0A// // A \n+// %09%09specNode()%0A// %09%7D%0A%0A// %09// An Import\n Spec\n@@ -66,199 +66,274 @@\n gle \n-(non-parenthesized)\n+package\n  import\n-,\n+.\n %0A// \n-// constant, type, or variable declaration.%0A// type (%0A// %09// The Spec type stands for any of *ImportSpec, *ValueSpec, and *TypeSpec.%0A// %09Spec interface %7B%0A// %09%09Node\n+%09ImportSpec struct %7B%0A// %09%09Doc     *CommentGroup // associated documentation; or nil%0A// %09%09Name    *Ident        // local package name (including %22.%22); or nil%0A// %09%09Path    *BasicLit     // import path%0A// %09%09Comment *CommentGroup // line comments; or nil\n %0A\n",
+    "timestamp": 1798576463963
+  },
+  {
+    "patch_text": "@@ -2,17 +2,75 @@\n / %09%09\n-specNode(\n+EndPos  token.Pos     // end of spec (overrides Path.Pos if nonzero\n )%0A//\n@@ -86,16 +86,14 @@\n // A\n-n Import\n+ Value\n Spec\n@@ -115,41 +115,99 @@\n s a \n-single package import.%0A// %09Import\n+constant or variable declaration%0A// %09// (ConstSpec or VarSpec production).%0A// %09//%0A// %09Value\n Spec\n@@ -288,20 +288,22 @@\n / %09%09Name\n+s\n    \n- \n+%5B%5D\n *Ident  \n@@ -310,146 +310,36 @@\n     \n-  \n // \n-local packag\n+valu\n e name\n+s\n  (\n-including %22.%22); or nil%0A// %09%09Path    *BasicLit     // import path%0A// %09%09Comment *CommentGroup // line comments; or nil\n+len(Names) %3E 0)\n %0A\n",
+    "timestamp": 1798960463963
+  },
+  {
+    "patch_text": "@@ -2,344 +2,236 @@\n / %09%09\n-EndPos  token.Pos     // end of spec (overrides Path.Pos if nonzero)%0A// %09%7D%0A%0A// %09// A ValueSpec node represents a constant or variable declaration%0A// %09// (ConstSpec or VarSpec production).%0A// %09//%0A// %09ValueSpec struct %7B%0A// %09%09Doc     *CommentGroup // associated documentation; or nil%0A// %09%09Names   %5B%5D*Ident      // value names (len(Names) %3E 0)\n+Type    Expr          // value type; or nil%0A// %09%09Values  %5B%5DExpr        // initial values; or nil%0A// %09%09Comment *CommentGroup // line comments; or nil%0A// %09%7D%0A%0A// %09// A TypeSpec node represents a type declaration (TypeSpec production).\n %0A\n",
+    "timestamp": 1799369063963
+  },
+  {
+    "patch_text": "@@ -1,68 +1,265 @@\n // %09\n-%09\n Type\n-    Expr          // value type; or nil%0A// %09%09Values  %5B%5D\n+Spec struct %7B%0A// %09%09Doc        *CommentGroup // associated documentation; or nil%0A// %09%09Name       *Ident        // type name%0A// %09%09TypeParams *FieldList    // type parameters; or nil%0A// %09%09Assign     token.Pos     // position of '=', if any%0A// %09%09Type       \n Expr\n@@ -270,33 +270,82 @@\n     \n+  \n // \n-initial values; or nil\n+*Ident, *ParenExpr, *SelectorExpr, *StarExpr, or any of the *XxxTypes\n %0A// \n@@ -354,16 +354,19 @@\n Comment \n+   \n *Comment\n@@ -406,81 +406,9 @@\n  %09%7D%0A\n-%0A\n // \n-%09// A TypeSpec node represents a type declaration (TypeSpec production).\n+)\n %0A\n",
+    "timestamp": 1799796263963
+  },
+  {
+    "patch_text": "@@ -1,414 +1,244 @@\n+%0A\n // \n-%09TypeSpec struct %7B%0A// %09%09Doc        *CommentGroup // associated documentation; or nil%0A// %09%09Name       *Ident        // type name%0A// %09%09TypeParams *FieldList    // type parameters; or\n+// Pos and End implementations for spec nodes.%0A%0A// func (s *ImportSpec) Pos() token.Pos %7B%0A// %09if s.Name !=\n  nil\n+ %7B\n %0A// %09%09\n-Assign     token.Pos     // position of '=', if any%0A// %09%09Type       Expr          // *Ident, *ParenExpr, *SelectorExpr, *StarExpr, or any of the *XxxTypes%0A// %09%09Comment    *CommentGroup // line comments; or nil%0A// %09%7D%0A// )\n+return s.Name.Pos()%0A// %09%7D%0A// %09return s.Path.Pos()%0A// %7D%0A// func (s *ValueSpec) Pos() token.Pos %7B return s.Names%5B0%5D.Pos() %7D\n %0A\n",
+    "timestamp": 1800259463963
+  },
+  {
+    "patch_text": "@@ -1,54 +1,66 @@\n-%0A\n // \n-// Pos and End implementations for spec nodes.\n+func (s *TypeSpec) Pos() token.Pos  %7B return s.Name.Pos() %7D\n %0A%0A//\n@@ -77,27 +77,27 @@\n ImportSpec) \n-Pos\n+End\n () token.Pos\n@@ -112,19 +112,19 @@\n f s.\n-Name\n+EndPos\n  != \n-nil\n+0\n  %7B%0A/\n@@ -136,26 +136,22 @@\n eturn s.\n-Name.\n+End\n Pos\n-()\n %0A// %09%7D%0A/\n@@ -171,19 +171,19 @@\n ath.\n-Pos\n+End\n ()%0A// %7D%0A\n // f\n@@ -182,71 +182,5 @@\n / %7D%0A\n-// func (s *ValueSpec) Pos() token.Pos %7B return s.Names%5B0%5D.Pos() %7D\n %0A\n",
+    "timestamp": 1800570263963
+  },
+  {
+    "patch_text": "@@ -9,21 +9,22 @@\n (s *\n-Typ\n+Valu\n eSpec) \n-Pos\n+End\n () t\n@@ -36,75 +36,82 @@\n Pos \n- %7B return s.Name.Pos() %7D%0A%0A// func (s *ImportSpec) End() token.Pos %7B\n+%7B%0A// %09if n := len(s.Values); n %3E 0 %7B%0A// %09%09return s.Values%5Bn-1%5D.End()%0A// %09%7D\n %0A// \n@@ -120,19 +120,19 @@\n f s.\n-EndPos\n+Type\n  != \n-0\n+nil\n  %7B%0A/\n@@ -148,14 +148,18 @@\n n s.\n-EndPos\n+Type.End()\n %0A// \n@@ -178,21 +178,99 @@\n n s.\n-Path.End()%0A// %7D%0A\n+Names%5Blen(s.Names)-1%5D.End()%0A// %7D%0A// func (s *TypeSpec) End() token.Pos %7B return s.Type.End() %7D\n %0A\n",
+    "timestamp": 1800908663963
+  },
+  {
+    "patch_text": "@@ -1,216 +1,154 @@\n+%0A\n // \n-func (s *ValueSpec) End() token.Pos %7B%0A// %09if n := len(s.Values); n %3E 0 %7B%0A// %09%09return s.Values%5Bn-1%5D.End()%0A// %09%7D%0A// %09if s.Type != nil %7B%0A// %09%09return s.Type.End()%0A// %09%7D%0A// %09return s.Names%5Blen(s.Names)-1%5D.End()%0A// \n+// specNode() ensures that only spec nodes can be%0A// // assigned to a Spec.%0A// func (*ImportSpec) specNode() %7B%7D%0A// func (*ValueSpec) specNode()  %7B\n %7D%0A//\n@@ -154,18 +154,16 @@\n / func (\n-s \n *TypeSpe\n@@ -169,44 +169,21 @@\n ec) \n-End() token.Pos %7B return s.Type.End() \n+specNode()   %7B\n %7D%0A\n+%0A\n",
+    "timestamp": 1801275863963
+  },
+  {
+    "patch_text": "@@ -1,189 +1,329 @@\n-%0A\n // // \n-specNode() ensures that only spec nodes can be\n+A declaration is represented by one of the following declaration nodes.%0A// type (\n %0A// \n+%09\n // \n-assigned to a Spec.%0A// func (*ImportSpec) specNode() %7B%7D%0A// func (*ValueSpec) specNode() \n+A BadDecl node is a placeholder for a declaration containing%0A// %09// syntax errors for which a correct declaration node cannot be%0A// %09// created.%0A// %09//%0A// %09BadDecl struct\n  %7B\n-%7D\n %0A// \n-func (*TypeSpec) specNode()   %7B%7D%0A\n+%09%09From, To token.Pos // position range of bad declaration\n %0A\n",
+    "timestamp": 1801634663963
+  },
+  {
+    "patch_text": "@@ -1,319 +1,203 @@\n // \n-// A declaration is represented by one of the following declaration nodes.%0A// type (%0A// %09// A BadDecl node is a placeholder for a declaration containing%0A// %09// syntax errors for which a correct declaration node cannot be%0A// %09// created.%0A// %09//%0A// %09BadDecl struct %7B%0A// %09%09From, To token.Pos // position range of ba\n+%09%7D%0A%0A// %09// A GenDecl node (generic declaration node) represents an import,%0A// %09// constant, type or variable declaration. A valid Lparen position%0A// %09// (Lparen.IsValid()) indicates a parenthesize\n d de\n@@ -201,13 +201,14 @@\n  declaration\n+.\n %0A\n",
+    "timestamp": 1802015663963
+  },
+  {
+    "patch_text": "@@ -1,18 +1,18 @@\n // %09\n-%7D%0A\n+//\n %0A// %09// \n A Ge\n@@ -11,204 +11,201 @@\n %09// \n-A GenDecl node (generic declaration node) represents an i\n+Relationship between Tok value and Specs element type:%0A// %09//%0A// %09//%09token.IMPORT  *I\n mport\n-,\n+Spec\n %0A// %09//\n- constant, type or variable declaration. A valid Lparen position%0A// %09// (Lparen.IsValid()) indicates a parenthesized declaration.\n+%09token.CONST   *ValueSpec%0A// %09//%09token.TYPE    *TypeSpec%0A// %09//%09token.VAR     *ValueSpec%0A// %09//\n %0A\n",
+    "timestamp": 1802332463963
+  },
+  {
+    "patch_text": "@@ -1,211 +1,312 @@\n // %09\n-//%0A// %09// Relationship between Tok value and Specs element type:%0A// %09//%0A// %09//%09token.IMPORT  *ImportSpec%0A// %09//%09token.CONST   *ValueSpec%0A// %09//%09token.TYPE    *TypeSpec%0A// %09//%09token.VAR     *ValueSpec\n+GenDecl struct %7B%0A// %09%09Doc    *CommentGroup // associated documentation; or nil%0A// %09%09TokPos token.Pos     // position of Tok%0A// %09%09Tok    token.Token   // IMPORT, CONST, TYPE, or VAR%0A// %09%09Lparen token.Pos     // position of '(', if any%0A// %09%09Specs  %5B%5DSpec%0A// %09%09Rparen token.Pos // position of ')', if any\n %0A// %09\n-//\n+%7D\n %0A\n",
+    "timestamp": 1802711063963
+  },
+  {
+    "patch_text": "@@ -1,11 +1,71 @@\n+%0A\n // %09\n-Gen\n+// A FuncDecl node represents a function declaration.%0A// %09Func\n Decl\n@@ -84,18 +84,16 @@\n  %09%09Doc  \n-  \n *Comment\n@@ -143,228 +143,307 @@\n / %09%09\n-TokPos token.Pos     // position of Tok%0A// %09%09Tok    token.Token   // IMPORT, CONST, TYPE, or VAR%0A// %09%09Lparen token.Pos     // position of '(', if any%0A// %09%09Specs  %5B%5DSpec%0A// %09%09Rparen token.Pos // position of ')', if any%0A// %09%7D\n+Recv *FieldList    // receiver (methods); or nil (functions)%0A// %09%09Name *Ident        // function/method name%0A// %09%09Type *FuncType     // function signature: type and value parameters, results, and position of %22func%22 keyword%0A// %09%09Body *BlockStmt    // function body; or nil for external (non-Go) function\n %0A\n",
+    "timestamp": 1803180263963
+  },
+  {
+    "patch_text": "@@ -1,449 +1,247 @@\n-%0A\n // %09\n+%7D%0A\n // \n-A FuncDecl node represents a function declaration.%0A// %09FuncDecl struct %7B%0A// %09%09Doc  *CommentGroup // associated documentation; or nil%0A// %09%09Recv *FieldList    // receiver (methods); or nil (functions)%0A// %09%09Name *Ident        // function/method name%0A// %09%09Type *FuncType     // function signature: type and value parameters, results, and position of %22func%22 keyword%0A// %09%09Body *BlockStmt    // function body; or nil for external (non-Go) function\n+)%0A%0A// // Pos and End implementations for declaration nodes.%0A%0A// func (d *BadDecl) Pos() token.Pos  %7B return d.From %7D%0A// func (d *GenDecl) Pos() token.Pos  %7B return d.TokPos %7D%0A// func (d *FuncDecl) Pos() token.Pos %7B return d.Type.Pos() %7D%0A\n %0A\n",
+    "timestamp": 1803659063963
+  },
+  {
+    "patch_text": "@@ -1,74 +1,4 @@\n-// %09%7D%0A// )%0A%0A// // Pos and End implementations for declaration nodes.%0A%0A\n // f\n@@ -10,27 +10,27 @@\n d *BadDecl) \n-Pos\n+End\n () token.Pos\n@@ -22,33 +22,32 @@\n End() token.Pos \n- \n %7B return d.From \n@@ -45,12 +45,10 @@\n n d.\n-From\n+To\n  %7D%0A/\n@@ -63,27 +63,27 @@\n d *GenDecl) \n-Pos\n+End\n () token.Pos\n@@ -87,26 +87,99 @@\n Pos \n- %7B return d.TokPos\n+%7B%0A// %09if d.Rparen.IsValid() %7B%0A// %09%09return d.Rparen + 1%0A// %09%7D%0A// %09return d.Specs%5B0%5D.End()%0A//\n  %7D%0A/\n@@ -199,19 +199,19 @@\n ncDecl) \n-Pos\n+End\n () token\n@@ -220,28 +220,28 @@\n os %7B\n- return d.Type.Pos() %7D%0A\n+%0A// %09if d.Body != nil %7B\n %0A\n",
+    "timestamp": 1804055063963
+  },
+  {
+    "patch_text": "@@ -1,247 +1,181 @@\n // \n-func (d *BadDecl) End() token.Pos %7B return d.To\n+%09%09return d.Body.End()%0A// %09%7D%0A// %09return d.Type.End()%0A//\n  %7D%0A\n+%0A\n // \n-func (d *GenDecl) End() token.Pos %7B%0A// %09if d.Rparen.IsValid() %7B%0A// %09%09return d.Rparen + 1%0A// %09%7D%0A// %09return d.Specs%5B0%5D.End()%0A// %7D%0A// func (d *FuncDecl) End() token.Pos %7B%0A// %09if d.Body != nil\n+// declNode() ensures that only declaration nodes can be%0A// // assigned to a Decl.%0A// func (*BadDecl) declNode() \n  %7B\n+%7D\n %0A\n",
+    "timestamp": 1804374263963
+  },
+  {
+    "patch_text": "@@ -1,181 +1,386 @@\n // \n-%09%09return d.Body.End()%0A// %09%7D%0A// %09return d.Type.End()%0A// %7D%0A%0A// // declNode() ensures that only declaration nodes can be%0A// // assigned to a Decl.%0A// func (*BadDecl) declNode()  %7B%7D\n+func (*GenDecl) declNode()  %7B%7D%0A// func (*FuncDecl) declNode() %7B%7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Files and packages%0A%0A// // A File node represents a Go source file.%0A// //%0A// // The Comments list contains all comments in the source file in order of%0A// // appearance, including the comments that are pointed to from other nodes\n %0A\n",
+    "timestamp": 1804763663963
+  },
+  {
+    "patch_text": "@@ -1,171 +1,112 @@\n // \n-func (*GenDecl) declNode()  %7B%7D%0A// func (*FuncDecl) declNode() %7B%7D%0A%0A// // ----------------------------------------------------------------------------%0A// // Files and\n+// via Doc and Comment fields.%0A// //%0A// // For correct printing of source code containing comments (using\n  pac\n@@ -115,98 +115,145 @@\n ges%0A\n-%0A\n // // \n-A File node represents a Go source file.%0A// //\n+go/format and go/printer), special care must be taken to update comments\n %0A// // \n-The Comments list co\n+when a File's syntax tree is modified: For pri\n nt\n-a\n in\n-s all\n+g,\n  com\n@@ -262,113 +262,92 @@\n nts \n-in the source file in order of%0A// // appearance, including the comm\n+are interspersed%0A// // between tok\n en\n-t\n s \n-that are pointed to from other\n+based on their position. If syntax tree\n  nodes\n+ are\n %0A\n",
+    "timestamp": 1805268863963
+  },
+  {
+    "patch_text": "@@ -3,351 +3,405 @@\n  // \n-via Doc and Comment fields.%0A// //%0A// // For correct printing of source code containing comments (using packages%0A// // go/format and go/printer), special care must be taken to update comments%0A// // when a File's syntax tree is modified: For printing, comments are interspersed%0A// // between tokens based on\n+removed or moved, relevant comments in their vicinity must also be removed%0A// // (from the %5BFile.Comments%5D list) or moved accordingly (by updating their%0A// // positions). A %5BCommentMap%5D may be used to facilitate some of these operations.%0A// //%0A// // Whether and how a comment is associated with a node depends on the%0A// // interpretation of\n  the\n-ir position. If syntax tree nodes are\n+ syntax tree by the manipulating program: except for Doc\n %0A\n",
+    "timestamp": 1805755463963
+  },
+  {
+    "patch_text": "@@ -3,34 +3,21 @@\n  // \n-removed or moved, releva\n+and %5BComme\n nt\n+%5D\n  com\n@@ -26,369 +26,400 @@\n nts \n-in their vicinity must also be removed%0A// // (from the %5BFile.Comments%5D list) or moved accordingly (by updating their%0A// // positions). A %5BCommentMap%5D may be used to facilitate some of these operations.%0A// //%0A// // Whether and how a comment is associated with a node depends on the%0A// // interpretation of the syntax tree by the manipulating program: except for Doc\n+directly associated with nodes, the remaining comments%0A// // are %22free-floating%22 (see also issues %5B#18593%5D, %5B#20744%5D).%0A// //%0A// // %5B#18593%5D: https://go.dev/issue/18593%0A// // %5B#20744%5D: https://go.dev/issue/20744%0A// type File struct %7B%0A// %09Doc     *CommentGroup // associated documentation; or nil%0A// %09Package token.Pos     // position of %22package%22 keyword%0A// %09Name    *Ident        // package name\n %0A\n",
+    "timestamp": 1806320063963
+  },
+  {
+    "patch_text": "@@ -1,278 +1,423 @@\n // \n-// and %5BComment%5D comments directly associated with nodes, the remaining comments%0A// // are %22free-floating%22 (see also issues %5B#18593%5D, %5B#20744%5D).%0A// //%0A// // %5B#18593%5D: https://go.dev/issue/18593%0A// // %5B#20744%5D: https://go.dev/issue/20744%0A// type File struct %7B%0A// %09Doc\n+%09Decls   %5B%5DDecl        // top-level declarations; or nil%0A%0A// %09FileStart, FileEnd token.Pos       // start and end of entire file%0A// %09Scope              *Scope          // package scope (this file only). Deprecated: see Object%0A// %09Imports            %5B%5D*ImportSpec   // imports in this file%0A// %09Unresolved         %5B%5D*Ident        // unresolved identifiers in this file. Deprecated: see Object%0A// %09Comments      \n      \n+%5B%5D\n *Com\n@@ -433,138 +433,157 @@\n  // \n-associated documentation; or n\n+list of all comments in the source f\n il\n+e\n %0A// %09\n-Package token.Pos     // position of %22package%22 keyword%0A// %09Name    *Ident        // package name\n+GoVersion          string          // minimum Go version required by //go:build or // +build directives%0A// %7D\n %0A\n",
+    "timestamp": 1807006463963
+  },
+  {
+    "patch_text": "@@ -1,468 +1,314 @@\n+%0A\n // \n-%09Decls   %5B%5DDecl        // top-level declarations; or nil%0A%0A// %09FileStart, FileEnd token.Pos       // start and end of entire\n+// Pos returns the position of the package declaration.%0A// // It may be invalid, for example in an empty\n  file\n+.\n %0A// \n-%09Scope              *Scope          // package scope (this file only). Deprecated: see Object%0A// %09Imports            %5B%5D*ImportSpec   // imports in this file%0A// %09Unresolved         %5B%5D*Ident        \n+//%0A// // (Use FileStart for the start of the entire file. It is always valid.)%0A\n // \n+f\n un\n-resolved identifiers in this file. Deprecated: see Object%0A// %09Comments           %5B%5D*CommentGroup // list of all comments\n+c (f *File) Pos() token.Pos %7B return f.Package %7D%0A%0A// // End returns the end of the last declaration\n  in the \n sour\n@@ -307,129 +307,71 @@\n the \n-source \n file\n+.\n %0A// \n-%09GoVersion          string          // minimum Go version required by //go:build or // +build directives\n+// It may be invalid, for example in an empty file.\n %0A// \n-%7D\n+//\n %0A\n",
+    "timestamp": 1807665863963
+  },
+  {
+    "patch_text": "@@ -1,125 +1,4 @@\n-%0A// // Pos returns the position of the package declaration.%0A// // It may be invalid, for example in an empty file.%0A// //%0A\n // /\n@@ -12,13 +12,11 @@\n File\n-Start\n+End\n  for\n@@ -24,13 +24,11 @@\n the \n-start\n+end\n  of \n@@ -83,19 +83,19 @@\n  *File) \n-Pos\n+End\n () token\n@@ -104,149 +104,202 @@\n os %7B\n- return f.Package %7D%0A%0A// // End returns the end of the last declaration in th\n+%0A// %09if n := len(f.Decls); n %3E 0 %7B%0A// %09%09return f.Decls%5Bn-1%5D.End()%0A// %09%7D%0A// %09return f.Name.End()%0A// %7D%0A%0A// // A Package node represents a set of sourc\n e file\n-.\n+s\n %0A// // \n-It may be invalid, for example \n+collectively build\n in\n+g\n  a\n-n empty file.%0A// //\n+ Go package.\n %0A\n",
+    "timestamp": 1808101463963
+  },
+  {
+    "patch_text": "@@ -2,304 +2,413 @@\n / //\n- (Use FileEnd for the end of the entire file. It is always valid.)%0A// func (f *File) End() token.Pos %7B%0A// %09if n := len(f.Decls); n %3E 0 %7B%0A// %09%09return f.Decls%5Bn-1%5D.End()%0A// %09%7D%0A// %09return f.Name.End()%0A// %7D%0A%0A// // A Package node represents a set of source files%0A// // collectively building a Go package.\n+%0A// // Deprecated: use the type checker %5Bgo/types%5D instead; see %5BObject%5D.%0A// type Package struct %7B%0A// %09Name    string             // package name%0A// %09Scope   *Scope             // package scope across all files%0A// %09Imports map%5Bstring%5D*Object // map of package id -%3E package object%0A// %09Files   map%5Bstring%5D*File   // Go source files by filename%0A// %7D%0A%0A// func (p *Package) Pos() token.Pos %7B return token.NoPos %7D\n %0A\n",
+    "timestamp": 1808603063963
+  },
+  {
+    "patch_text": "@@ -1,414 +1,449 @@\n // \n-//%0A// // Deprecated: use the type checker %5Bgo/types%5D instead; see %5BObject%5D.%0A// type Package struct %7B%0A// %09Name    string             // package name%0A// %09Scope   *Scope             // package scope across all files%0A// %09Imports map%5Bstring%5D*Object // map of package id -%3E package object%0A// %09Files   map%5Bstring%5D*File   // Go source files by filename%0A// %7D%0A%0A// func (p *Package) Pos() token.Pos %7B return token.NoPos %7D\n+func (p *Package) End() token.Pos %7B return token.NoPos %7D%0A%0A// // IsGenerated reports whether the file was generated by a program,%0A// // not handwritten, by detecting the special comment described%0A// // at https://go.dev/s/generatedcode.%0A// //%0A// // The syntax tree must have been parsed with the %5Bparser.ParseComments%5D flag.%0A// // Example:%0A// //%0A// //%09f, err := parser.ParseFile(fset, filename, src, parser.ParseComments%7Cparser.PackageClauseOnly)\n %0A\n",
+    "timestamp": 1809185663963
+  },
+  {
+    "patch_text": "@@ -1,449 +1,279 @@\n // \n-func (p *Package) End() token.Pos %7B return token.NoPos\n+//%09if err != nil %7B ...\n  %7D%0A\n-%0A\n // //\n- IsGenerated reports whether the file was generated by a program,%0A// // not handwritten, by detecting the special comment described%0A// // at https://go.dev/s/generatedcode.%0A// //%0A// // The syntax tree must have been parsed with the %5Bparser.ParseComments%5D flag.%0A// // Example:%0A// //%0A// //%09f, err := parser.ParseFile(fset, filename, src, parser.ParseComments%7Cparser.PackageClauseOnly)\n+%09gen := ast.IsGenerated(f)%0A// func IsGenerated(file *File) bool %7B%0A// %09_, ok := generator(file)%0A// %09return ok%0A// %7D%0A%0A// func generator(file *File) (string, bool) %7B%0A// %09for _, group := range file.Comments %7B%0A// %09%09for _, comment := range group.List %7B\n %0A\n",
+    "timestamp": 1809682463963
+  },
+  {
+    "patch_text": "@@ -1,279 +1,265 @@\n // \n-//\n+%09%09\n %09if \n-err != nil %7B ... %7D%0A// //%09gen := ast.IsGenerated(f)%0A// func IsGenerated(file *File) bool %7B%0A// %09_, ok := generator(file)%0A// %09return ok%0A// %7D%0A%0A// func generator(file *File) (string, bool) %7B%0A// %09for _, group := range file.Comments %7B%0A// %09%09for _, comment := range group.List\n+comment.Pos() %3E file.Package %7B%0A// %09%09%09%09break // after package declaration%0A// %09%09%09%7D%0A// %09%09%09// opt: check Contains first to avoid unnecessary array allocation in Split.%0A// %09%09%09const prefix = %22// Code generated %22%0A// %09%09%09if strings.Contains(comment.Text, prefix)\n  %7B%0A\n",
+    "timestamp": 1810085663963
+  },
+  {
+    "patch_text": "@@ -3,263 +3,231 @@\n  %09%09%09\n-if comment.Pos() %3E file.Package %7B%0A// %09%09%09%09break // after package declaration%0A// %09%09%09%7D%0A// %09%09%09// opt: check Contains first to avoid unnecessary array allocation in Split.%0A// %09%09%09const prefix = %22// Code generated %22\n+%09for _, line := range strings.Split(comment.Text, %22%5Cn%22) %7B%0A// %09%09%09%09%09if rest, ok := strings.CutPrefix(line, prefix); ok %7B\n %0A// %09%09%09\n+%09%09%09\n if \n-strings.Contains(comment.Text, prefix) %7B\n+gen, ok := strings.CutSuffix(rest, %22 DO NOT EDIT.%22); ok %7B%0A// %09%09%09%09%09%09%09return gen, true%0A// %09%09%09%09%09%09%7D\n %0A\n",
+    "timestamp": 1810473863963
+  },
+  {
+    "patch_text": "@@ -4,230 +4,172 @@\n %09%09%09%09\n-for _, line := range strings.Split(comment.Text, %22%5Cn%22) %7B%0A// %09%09%09%09%09if rest, ok := strings.CutPrefix(line, prefix); ok %7B%0A// %09%09%09%09%09%09if gen, ok := strings.CutSuffix(rest, %22 DO NOT EDIT.%22); ok %7B%0A// %09%09%09%09%09%09%09return gen, true%0A// %09%09%09%09%09%09%7D\n+%09%7D%0A// %09%09%09%09%7D%0A// %09%09%09%7D%0A// %09%09%7D%0A// %09%7D%0A// %09return %22%22, false%0A// %7D%0A%0A// // Unparen returns the expression with any enclosing parentheses removed.%0A// func Unparen(e Expr) Expr %7B\n %0A\n",
+    "timestamp": 1810815263963
+  },
+  {
+    "patch_text": "@@ -1,175 +1,102 @@\n // %09\n-%09%09%09%09%7D\n+for %7B\n %0A// %09%09\n-%09%09%7D%0A// %09%09%09%7D%0A// %09%09%7D%0A// %09%7D%0A// %09return %22%22, fals\n+paren, ok := e.(*ParenExpr)%0A// %09%09if !ok %7B%0A// %09%09%09return \n e%0A// \n+%09%09\n %7D\n-%0A\n %0A// \n-// Unparen returns the expression with any enclosing parentheses removed.%0A// func Unparen(e Expr) Expr %7B\n+%09%09e = paren.X%0A// %09%7D\n %0A\n",
+    "timestamp": 1811058863963
+  },
+  {
+    "patch_text": "@@ -1,102 +1,5 @@\n // \n-%09for %7B%0A// %09%09paren, ok := e.(*ParenExpr)%0A// %09%09if !ok %7B%0A// %09%09%09return e%0A// %09%09%7D%0A// %09%09e = paren.X%0A// %09\n %7D%0A\n",
+    "timestamp": 1811163263963
+  }
+]

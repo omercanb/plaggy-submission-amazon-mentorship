@@ -1,0 +1,5 @@
+**/*.db
+**/daemon.log
+**/daemon.pid
+**/*.exe
+bin/

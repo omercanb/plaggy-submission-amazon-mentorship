@@ -85,7 +85,4 @@ Run these commands (on daemon directory) to kill the daemon process.
 ./daemon.exe uninstall
 ```
 
-## Usage
-INSERT & EXPLAIN CLI COMMANDS HERE! MELİS, ÖMER CAN
-
 
